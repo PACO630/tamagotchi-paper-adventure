@@ -1,0 +1,42 @@
+/** Controls & gameplay help. */
+import { btn, h, iconLabel, Layer } from '../dom';
+
+export function openHelp(): Promise<void> {
+  return new Promise((resolve) => {
+    const layer = new Layer('screen help-screen');
+    const close = () => { layer.close(); resolve(); };
+    layer.onCancel = close;
+    const rows: [string, string, string][] = [
+      ['移動', 'WASD／方向鍵（Shift 奔跑）', '左下虛擬搖桿（推到底奔跑）'],
+      ['跳躍', 'Space', 'A 按鈕'],
+      ['鎚子攻擊', 'J 或 X', 'B 按鈕'],
+      ['確認／調查／對話', 'Enter、E 或 Z', 'OK 按鈕或點擊對話框'],
+      ['選單／返回', 'ESC', '[menu]按鈕'],
+      ['快速使用道具', 'Q', '[bag]按鈕或畫面下方道具欄'],
+    ];
+    layer.el.append(h('div', { class: 'paper-card wide help-card' },
+      h('h2', {}, '操作說明'),
+      h('table', { class: 'help-table' }, h('tr', {}, h('th', {}, '動作'), h('th', {}, '電腦'), h('th', {}, '手機')), ...rows.map(([a, b, c]) => h('tr', {}, h('td', {}, a), h('td', {}, b), h('td', {}, ...iconLabel(c))))),
+      h('h3', {}, '探索'),
+      h('ul', {},
+        h('li', {}, '用鎚子敲碎「裂開的方塊」，可以找到秘密道路。'),
+        h('li', {}, '在奇怪的地方跳一下，可能會出現「隱藏寶箱」！'),
+        h('li', {}, '先用鎚子打到或從上面踩到地圖上的敵人，就能「先制攻擊」。被敵人撞到則會被偷襲。'),
+        h('li', {}, '掉進水裡或洞裡會損失 1 HP 並回到岸邊。風、海流與輸送帶會推動你。'),
+        h('li', {}, '粉紅色的「S」方塊可以存檔，綠色的回復台能恢復全隊 HP 與技能點數。')),
+      h('h3', {}, '戰鬥（按鍵時機）'),
+      h('ul', {},
+        h('li', {}, '鎚子：光圈縮到最小時按確認，就會出現 Nice / Great！傷害提升。'),
+        h('li', {}, '跳躍：落在敵人頭上的瞬間按確認，可以連續踩。刺刺的敵人不能踩，飛行的敵人鎚子打不到。'),
+        h('li', {}, '技能：依照畫面提示連打或按方向鍵。'),
+        h('li', {}, '防禦：敵人衝過來的瞬間按確認，可減少傷害；時機完美（Perfect!）可完全擋下！'),
+        h('li', {}, '狀態：中毒／燒傷（每回合扣血）、睡著／頭暈／纏住（無法行動）、攻擊上升／下降、防禦上升／下降、護盾、失明。')),
+      h('h3', {}, '多人模式'),
+      h('ul', {},
+        h('li', {}, '房主建立房間後，把 6 位房間代碼告訴朋友，最多 4 人。每人選擇不同角色。'),
+        h('li', {}, '劇情由房主推進；戰鬥輪流行動，被攻擊的玩家自己按防禦。'),
+        h('li', {}, '經驗值與等級會保存到每位玩家自己的存檔中。')),
+      h('div', { class: 'row' }, btn('返回', close, { cls: 'primary', sfx: 'cancel' }))));
+    layer.open();
+  });
+}

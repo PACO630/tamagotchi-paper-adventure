@@ -1,0 +1,25 @@
+{
+  "name": "tamagotchi-paper-adventure",
+  "private": true,
+  "version": "1.0.0",
+  "author": "@paco._0630",
+  "description": "拓麻歌子紙片大冒險 Tamagotchi Paper Adventure — a fan-made 2.5D paper RPG",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "skill:check": "cd .claude/skills/hand-drawn && python3 -B scripts/check_skill.py",
+    "art:prompts": "python3 -B tools/render_art_prompts.py"
+  },
+  "dependencies": {
+    "peerjs": "1.5.5",
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}

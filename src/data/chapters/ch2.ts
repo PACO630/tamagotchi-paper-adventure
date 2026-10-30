@@ -1,0 +1,130 @@
+import type { ChapterDef } from '../types';
+import { EMOTE, FLAG, FLASH, GIVE, IF, JOIN, L, LOOKS, MUSIC, N, QS, SFX, SHAKE, WAIT } from './helpers';
+
+export const ch2: ChapterDef = {
+  id: 'ch2', num: 2, title: '第二章：糖果森林的秘密', location: '糖果森林',
+  summary: '甜甜的糖果森林開始失控。巨大的糖果樹、巧克力河和糖果迷宮擋住了去路。',
+  music: 'forest', weather: 'candy', width: 6400, start: { x: 180, z: 130 },
+  theme: {
+    id: 'candy', skyTop: 0xffb0d8, skyBottom: 0xfff0c0, far: 0xffc8e8, farAccent: 0xffffff, mid: 0xc8f0d0, midAccent: 0xff6ab0,
+    ground: 0xffd8a8, groundAccent: 0xff6a9a, groundEdge: 0xfff6fa, pitColor: 0x7a4a2a, light: 0xfff0e0, ambient: 0xfff4f0,
+    sun: 'sun', farShape: 'hills', midShape: 'candy', groundPattern: 'candy',
+  },
+  mapNodes: [{ name: '森林入口', x: 200 }, { name: '棉花糖山丘', x: 1500 }, { name: '巧克力河', x: 2700 }, { name: '糖果迷宮', x: 3900 }, { name: '地下洞穴', x: 4800 }, { name: '暴走樹王', x: 5900 }],
+  intro: [
+    MUSIC('forest'),
+    N('感應器的指針指向南方。麻美吉和庫奇帕奇來到了甜甜的糖果森林。'),
+    L('kuchipatchi', '哇——整座森林都是糖果！我可以吃一口嗎！？', 'happy'),
+    L('hero', '等一下！你看，那些糖果樹在……動？', 'surprised'),
+    SHAKE(400), SFX('shake'),
+    L('kuchipatchi', '糖果自己長出了尖刺！好可怕！', 'worried'),
+    L('hero', '碎片的力量讓森林失控了。先找人問問路吧！', 'determined'),
+  ],
+  props: [
+    { t: 'lollipop', x: 150, z: -10, layer: 'back' }, { t: 'candy_cane', x: 420, z: 20 }, { t: 'cupcake_house', x: 700, z: -20, layer: 'back' }, { t: 'gumdrop', x: 900, z: 210 },
+    { t: 'marshmallow', x: 1300, z: 10, layer: 'back' }, { t: 'marshmallow', x: 1600, z: 30 }, { t: 'lollipop', x: 1850, z: -10, layer: 'back' }, { t: 'gumdrop', x: 2050, z: 220 },
+    { t: 'candy_cane', x: 2350, z: 20 }, { t: 'lollipop', x: 3100, z: -20, layer: 'back' }, { t: 'cupcake_house', x: 3400, z: -30, layer: 'back' }, { t: 'gumdrop', x: 3650, z: 200 },
+    { t: 'candy_cane', x: 4100, z: 10 }, { t: 'marshmallow', x: 4500, z: 0, layer: 'back' }, { t: 'rock', x: 4800, z: 220 }, { t: 'lollipop', x: 5200, z: -10, layer: 'back' },
+    { t: 'candy_cane', x: 5600, z: 20 }, { t: 'lollipop', x: 6100, z: -20, layer: 'back' }, { t: 'gumdrop', x: 1100, z: 240, layer: 'front' }, { t: 'gumdrop', x: 3300, z: 240, layer: 'front' },
+    { t: 'gumdrop', x: 5400, z: 240, layer: 'front' },
+  ],
+  npcs: [
+    { id: 'candy_master', name: '糖果師傅', look: LOOKS.baker, x: 650, z: 130, talk: [
+      { if: '!quest:q2_compass&!done:q2_compass', script: [
+        L('candy_master', '哎呀呀，外地來的小朋友？森林現在很危險喔！', 'worried'),
+        L('candy_master', '糖果迷宮會一直變換道路，沒有「糖果指南針」一定會迷路的。', 'normal'),
+        L('candy_master', '我把指南針藏在棉花糖山丘上的寶箱裡了。去拿吧！', 'happy'),
+        QS('q2_compass'),
+      ] },
+      { if: '!ch2_maze_open', script: [L('candy_master', '迷宮的開關要按照「糖果→餅乾→巧克力」的順序敲喔！順序錯了就要重來。', 'normal')] },
+      { script: [L('candy_master', '森林中心的樹王以前是很溫柔的……拜託你們了。', 'sad')] },
+    ] },
+    { id: 'memetchi', name: '美美吉', look: 'memetchi', x: 1200, z: 170, showIf: '!joined:memetchi', talk: [{ script: [
+      L('memetchi', '咦？是麻美吉和庫奇帕奇！你們也來採糖霜花嗎？', 'surprised'),
+      L('hero', '我們在找星之心的碎片。森林會失控就是因為它。', 'normal'),
+      L('memetchi', '原來如此……糖果們變得那麼兇，我好難過。', 'sad'),
+      L('memetchi', '我也要一起去！我做的甜點可以幫大家恢復體力喔！', 'determined'),
+      JOIN('memetchi'), SFX('join'), N('美美吉成為了夥伴！可以使用治療技能「甜甜治癒」。'),
+      L('memetchi', '對了，可以幫我找三朵糖霜花嗎？我想做一個花束送給樹王。', 'happy'), QS('s2_flowers'),
+    ] }] },
+    { id: 'gummy_kid', name: '軟糖小孩', look: LOOKS.kid, x: 4700, z: 200, talk: [
+      { script: [L('gummy_kid', '洞穴裡好暗……但我聽說，在黑暗中跳一跳，就會發現藏起來的寶箱喔！', 'normal')] },
+    ] },
+  ],
+  enemies: [
+    { id: 'e2a', enemy: 'gumdrop', party: ['gumdrop', 'gumdrop'], x: 1000, z: 100 },
+    { id: 'e2b', enemy: 'choco_bat', party: ['choco_bat', 'gumdrop'], x: 1800, z: 140 },
+    { id: 'e2c', enemy: 'thorny_lolly', party: ['thorny_lolly', 'choco_bat'], x: 3300, z: 80 },
+    { id: 'e2d', enemy: 'gumdrop', party: ['gumdrop', 'thorny_lolly', 'gumdrop'], x: 4300, z: 170 },
+    { id: 'e2e', enemy: 'choco_bat', party: ['choco_bat', 'choco_bat', 'thorny_lolly'], x: 5300, z: 120 },
+  ],
+  chests: [
+    { id: 'c2_compass', x: 1650, z: 60, items: [{ id: 'candy_compass', qty: 1 }, { id: 'candy_flower', qty: 1 }] },
+    { id: 'c2_1', x: 900, z: 40, items: [{ id: 'sticker_4', qty: 1 }] },
+    { id: 'c2_h1', x: 2050, z: 120, items: [{ id: 'candy_flower', qty: 1 }, { id: 'star_candy', qty: 1 }], hidden: true },
+    { id: 'c2_2', x: 3150, z: 200, items: [{ id: 'cake', qty: 1 }, { id: 'fire_candy', qty: 2 }] },
+    { id: 'c2_h2', x: 4850, z: 90, items: [{ id: 'sticker_5', qty: 1 }, { id: 'candy_flower', qty: 1 }], hidden: true },
+    { id: 'c2_3', x: 3900, z: 30, items: [{ id: 'sticker_6', qty: 1 }, { id: 'b_guard', qty: 1 }], showIf: 'ch2_maze_open' },
+    { id: 'c2_4', x: 5500, z: 200, items: [{ id: 'onigiri', qty: 2 }, { id: 'juice', qty: 2 }] },
+  ],
+  objects: [
+    { id: 'sign21', type: 'sign', x: 400, z: 160, text: '歡迎來到糖果森林！請勿亂吃路邊的糖果（會咬人）。' },
+    { id: 'blk21', type: 'breakable', x: 1450, z: 0, w: 1, flag: 'ch2_blk1' },
+    { id: 'save21', type: 'savepoint', x: 2300, z: 90 },
+    { id: 'sign22', type: 'sign', x: 2420, z: 190, text: '巧克力河很燙！搭乘漂浮餅乾過河。' },
+    { id: 'gate21', type: 'gate', x: 2560, z: 0, cond: 'item:candy_compass', w: 1 },
+    { id: 'sw_a', type: 'switch', x: 3600, z: 60, group: 'maze', order: 1, text: '糖果', flag: 'ch2_sw1' },
+    { id: 'sw_b', type: 'switch', x: 3800, z: 190, group: 'maze', order: 2, text: '餅乾', flag: 'ch2_sw2' },
+    { id: 'sw_c', type: 'switch', x: 4000, z: 100, group: 'maze', order: 3, text: '巧克力', flag: 'ch2_maze_open' },
+    { id: 'gate22', type: 'gate', x: 4200, z: 0, cond: 'ch2_maze_open', w: 1 },
+    { id: 'spring21', type: 'spring', x: 4380, z: 130 },
+    { id: 'heal21', type: 'heal', x: 5600, z: 110 },
+    { id: 'save22', type: 'savepoint', x: 5700, z: 60 },
+    { id: 'shard2', type: 'shard', x: 6150, z: 120, showIf: 'boss2&!shard2_got' },
+  ],
+  zones: [
+    { type: 'pit', x: 2680, w: 520, z0: 0, z1: 240, look: 'choco' },
+    { type: 'pit', x: 4440, w: 220, z0: 0, z1: 240, look: 'choco' },
+    { type: 'dark', x: 4700, w: 600 },
+  ],
+  platforms: [
+    { id: 'ck1', x: 2760, z: 120, w: 110, d: 60, dz: 80, period: 3.4, look: 'candy' },
+    { id: 'ck2', x: 2900, z: 120, w: 110, d: 60, dx: 40, period: 2.6, look: 'plank' },
+    { id: 'ck3', x: 3050, z: 110, w: 110, d: 60, dz: -80, period: 3.0, look: 'candy' },
+  ],
+  triggers: [
+    { id: 't2_crossed', x: 3250, w: 80, if: '!ch2_crossed', once: true, script: [FLAG('ch2_crossed'), L('kuchipatchi', '過河了！巧克力的味道好香……', 'happy'), QS('q2_maze')] },
+    { id: 't2_river', x: 2450, w: 80, if: '!quest:q2_river&!done:q2_river', once: true, script: [L('hero', '前面是巧克力河。只能踩著餅乾平台過去了！', 'determined'), QS('q2_river')] },
+    { id: 't2_cave', x: 4700, w: 60, once: true, script: [L('memetchi', '好暗喔……大家靠緊一點。', 'worried'), L('hero', '我的感應器會發光，跟緊我！', 'determined')] },
+  ],
+  boss: {
+    id: 'boss2', enemy: 'candy_tree_king', party: ['candy_tree_king', 'gumdrop', 'gumdrop'], x: 5950, z: 120, flag: 'boss2', music: 'boss',
+    pre: [
+      QS('q2_boss'), SHAKE(800), SFX('shake'),
+      L('candy_tree_king', '吼喔喔喔……甜……還要更多的甜……！', 'angry'),
+      L('memetchi', '樹王！是我啊，每年都來幫你澆糖水的美美吉！', 'sad'),
+      L('candy_tree_king', '……不……認識……！', 'angry'),
+      L('hero', '碎片在樹王的樹根裡！只能先讓它冷靜下來了！', 'determined'),
+      { do: 'battle', encounter: ['candy_tree_king', 'gumdrop', 'gumdrop'], boss: true, flag: 'boss2', music: 'boss' },
+    ],
+    post: [
+      L('candy_tree_king', '……美美吉……？我……做了什麼……', 'sad'),
+      L('memetchi', '沒關係的，樹王。等世界恢復，我再來幫你澆糖水。', 'happy'),
+      IF('done:s2_flowers', [L('memetchi', '這是送給你的糖霜花束！', 'happy'), L('candy_tree_king', '……好香。謝謝你。', 'happy')]),
+      SFX('shard'), N('樹王的根部升起了一塊溫暖的碎片。'),
+    ],
+  },
+  outro: [
+    FLAG('shard2_got'), GIVE('shard2'), SFX('shard'), FLASH(0xfff6a0),
+    N('取得了星之心碎片（2/8）！森林的糖果恢復了亮晶晶的顏色。'),
+    L('candy_tree_king', '在我失控之前……有一個戴著王冠的黑影把碎片塞進我的根裡。', 'worried'),
+    L('hero', '戴著王冠的黑影……跟村莊那個一樣！', 'surprised'),
+    L('memetchi', '感應器的光指向天上……是雲朵天空島！', 'determined'),
+    L('candy_tree_king', '森林東邊有一架舊的飛行器。帶它去吧。', 'normal'),
+    WAIT(300), { do: 'chapterEnd' },
+  ],
+  quests: ['q2_compass', 'q2_river', 'q2_maze', 'q2_boss', 's2_flowers'],
+  partner: 'memetchi',
+};
+
+void EMOTE;

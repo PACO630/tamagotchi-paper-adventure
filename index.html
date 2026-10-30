@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffb84d" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="紙片大冒險" />
+  <meta name="description" content="拓麻歌子紙片大冒險 — 原創 2.5D 紙片風格 RPG，支援單人冒險與最多 4 人 P2P 合作。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Noto Sans TC (SIL Open Font License)：沒有蘋方字體的裝置使用，讓所有裝置字形一致 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="./icons/favicon.png" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <title>拓麻歌子紙片大冒險 Tamagotchi Paper Adventure</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #2b1d14; overflow: hidden; }
+    #boot-splash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: repeating-linear-gradient(0deg, #fff7e0 0 31px, #e9dcc0 31px 32px); font-family: "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif; color: #5a3b1c; z-index: 100; }
+    #boot-splash .t { font-size: 28px; font-weight: 900; letter-spacing: 2px; transform: rotate(-2deg); }
+    #boot-splash .bar { width: 240px; height: 14px; border: 3px solid #5a3b1c; border-radius: 10px; margin-top: 18px; overflow: hidden; background: #fff; }
+    #boot-splash .fill { height: 100%; width: 0; background: #ffb84d; transition: width .2s; }
+    #boot-splash .msg { margin-top: 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="game"></div>
+    <div id="fx-overlay"></div>
+    <div id="ui"></div>
+    <div id="touch"></div>
+    <div id="toasts"></div>
+  </div>
+  <div id="boot-splash">
+    <div class="t">拓麻歌子紙片大冒險</div>
+    <div class="bar"><div class="fill" id="boot-fill"></div></div>
+    <div class="msg" id="boot-msg">正在攤開紙片世界…</div>
+  </div>
+  <noscript>這個遊戲需要啟用 JavaScript。</noscript>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

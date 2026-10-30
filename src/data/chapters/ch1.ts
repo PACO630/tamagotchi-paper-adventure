@@ -1,0 +1,150 @@
+import type { ChapterDef } from '../types';
+import { EMOTE, FLAG, FLASH, GIVE, IF, JOIN, L, LOOKS, MUSIC, N, QS, SFX, SHAKE, TAKE, WAIT } from './helpers';
+
+export const ch1: ChapterDef = {
+  id: 'ch1', num: 1, title: '第一章：消失的星光', location: '拓麻歌子村莊',
+  summary: '星之心碎裂的那一晚，村莊失去了顏色。麻美吉的星之感應器突然響了起來…',
+  music: 'village', weather: 'leaves', width: 5600, start: { x: 200, z: 130 },
+  theme: {
+    id: 'village', skyTop: 0x5a4a8a, skyBottom: 0xf0a888, far: 0x8a7ab0, farAccent: 0xffffff, mid: 0x6a9a6a, midAccent: 0x4a8a4a,
+    ground: 0x8acb6a, groundAccent: 0x5a9a4a, groundEdge: 0x6ab84a, pitColor: 0x4a90c8, light: 0xffe0b0, ambient: 0xfff0e0,
+    sun: 'moon', farShape: 'mountains', midShape: 'trees', groundPattern: 'grass',
+  },
+  mapNodes: [{ name: '麻美吉的家', x: 200 }, { name: '村莊廣場', x: 1000 }, { name: '小池塘', x: 2300 }, { name: '東邊倉庫', x: 3900 }, { name: '守護者廣場', x: 4700 }],
+  intro: [
+    MUSIC('village'),
+    N('那是一個很安靜的夜晚。拓麻歌子星球上，大家都睡得香甜。'),
+    SHAKE(900), SFX('shake'), FLASH(0xffffff),
+    N('突然，天空裂開了一道大縫——高掛天空的「星之心」碎成了八塊，往世界各地飛散！'),
+    L('hero', '哇啊啊！？剛剛是什麼聲音！', 'surprised'),
+    L('hero', '天空……天空怎麼變得灰灰的？連花都失去顏色了……', 'worried'),
+    SFX('magic'),
+    L('hero', '咦？我發明的「星之感應器」在嗶嗶叫！指針一直指向村莊廣場……', 'surprised'),
+    L('hero', '一定是發生了什麼大事。去廣場看看吧！', 'determined'),
+    QS('q1_elder'),
+  ],
+  props: [
+    { t: 'house', x: 180, z: -10, layer: 'back' }, { t: 'tree_round', x: 420, z: 10, layer: 'back' }, { t: 'fence', x: 560, z: 20 },
+    { t: 'flower', x: 640, z: 200 }, { t: 'flower_y', x: 680, z: 220 }, { t: 'house_b', x: 1100, z: -20, layer: 'back' }, { t: 'well', x: 1350, z: 30 },
+    { t: 'lamp', x: 860, z: 40 }, { t: 'lamp', x: 1500, z: 40 }, { t: 'tree_pine', x: 1650, z: 0, layer: 'back' }, { t: 'bush', x: 1900, z: 230, layer: 'front' },
+    { t: 'tree_round', x: 2100, z: -10, layer: 'back' }, { t: 'rock', x: 2700, z: 210 }, { t: 'house', x: 2900, z: -20, layer: 'back' }, { t: 'flower', x: 3050, z: 220 },
+    { t: 'tree_pine', x: 3300, z: 0, layer: 'back' }, { t: 'bush', x: 3500, z: 30 }, { t: 'fence', x: 4050, z: 20 }, { t: 'lamp', x: 4300, z: 40 },
+    { t: 'tree_round', x: 4500, z: -20, layer: 'back' }, { t: 'flower_y', x: 4950, z: 220 }, { t: 'tree_pine', x: 5300, z: 0, layer: 'back' }, { t: 'bush', x: 600, z: 240, layer: 'front' },
+    { t: 'bush', x: 2500, z: 240, layer: 'front' }, { t: 'bush', x: 4200, z: 240, layer: 'front' },
+  ],
+  npcs: [
+    { id: 'kuchipatchi', name: '庫奇帕奇', look: 'kuchipatchi', x: 700, z: 150, showIf: '!joined:kuchipatchi', talk: [{ script: [
+      L('kuchipatchi', '咕嚕嚕……麻美吉～我的肚子好餓喔……', 'sad'),
+      L('kuchipatchi', '天空變灰之後，麵包店的麵包都變得沒有味道了……', 'worried'),
+      IF('item:apple', [
+        L('hero', '來，這顆蘋果給你吃！', 'happy'), TAKE('apple'), SFX('item'),
+        L('kuchipatchi', '喀滋喀滋……好好吃！我復活了！', 'happy'),
+      ], [L('hero', '我身上沒有吃的……不過一起去找找看吧！', 'worried')]),
+      L('kuchipatchi', '你要去廣場對吧？我也要去！我的大嘴巴可是很厲害的！', 'determined'),
+      JOIN('kuchipatchi'), SFX('join'),
+      N('庫奇帕奇成為了夥伴！在戰鬥中可以使用「大口咬」等技能。'),
+    ] }] },
+    { id: 'oyajitchi', name: '神秘長者', look: 'oyajitchi', x: 1000, z: 110, talk: [
+      { if: '!ch1_met_elder', script: [
+        L('oyajitchi', '喔……你就是拿著星之感應器的孩子吧。', 'normal'),
+        L('hero', '老爺爺，您知道發生了什麼事嗎？', 'worried'),
+        L('oyajitchi', '剛才碎掉的，是守護整個世界的「星之心」。它裝著大家的記憶、夢想和心情。', 'sad'),
+        L('oyajitchi', '星之心碎成了八塊，世界才會失去顏色，有些居民也忘記了自己是誰。', 'sad'),
+        L('oyajitchi', '只有把八塊碎片全部找回來，世界才能恢復原狀。', 'determined'),
+        L('hero', '八塊！？……好！我的感應器可以找到碎片，我去把它們找回來！', 'determined'),
+        L('oyajitchi', '呵呵，好孩子。不過先幫幫村莊吧——有三位村民迷路了，他們忘記了回家的路。', 'happy'),
+        FLAG('ch1_met_elder'), QS('q1_villagers'), QS('s1_blobs'),
+      ] },
+      { if: '!done:q1_villagers', script: [L('oyajitchi', '迷路的村民一共有三位。仔細找找裂開的牆壁後面，或池塘的另一邊吧。', 'normal')] },
+      { if: '!boss1', script: [L('oyajitchi', '倉庫的鈴鐺能讓守護者想起自己的使命……小心，廣場的石像不太對勁。', 'worried')] },
+      { script: [L('oyajitchi', '你做得很好。去吧，世界在等著你。', 'happy')] },
+    ] },
+    { id: 'v1', name: '迷路的小圓', look: LOOKS.farmer, x: 1780, z: 70, talk: [
+      { if: '!found_v1', script: [L('v1', '我……我是誰？為什麼會在牆壁後面……？', 'worried'), L('hero', '你是住在村莊的小圓！大家都在找你喔。', 'happy'), L('v1', '小圓……對！我想起來了！謝謝你！', 'happy'), FLAG('found_v1'), SFX('quest')] },
+      { script: [L('v1', '我要回家種田了！記憶回來的感覺真好～', 'happy')] },
+    ] },
+    { id: 'v2', name: '迷路的花花', look: LOOKS.granny, x: 2780, z: 120, talk: [
+      { if: '!found_v2', script: [L('v2', '這朵花……為什麼是灰色的呢？我好像忘了什麼很重要的事……', 'sad'), L('hero', '花花奶奶，您是村裡最會種花的人啊！', 'normal'), L('v2', '……啊，對了。我的花園！謝謝你，小傢伙。', 'happy'), FLAG('found_v2'), SFX('quest')] },
+      { script: [L('v2', '等星之心回來，我的花園一定會再開滿花。', 'happy')] },
+    ] },
+    { id: 'v3', name: '迷路的阿守', look: LOOKS.guard, x: 3320, z: 180, talk: [
+      { if: '!found_v3', script: [L('v3', '站住！……呃，我要守護什麼來著？', 'surprised'), L('hero', '你是村莊的守衛阿守呀！', 'happy'), L('v3', '沒錯！我是守衛！我想起來了！', 'determined'), FLAG('found_v3'), SFX('quest'), L('v3', '果凍們都變得好兇。如果你能幫我打倒 3 隻，我會好好謝謝你！', 'normal')] },
+      { script: [L('v3', '倉庫的門我已經幫你打開了，鈴鐺就在裡面！', 'happy')] },
+    ] },
+    { id: 'kid', name: '哭泣的小芽', look: LOOKS.kid, x: 1250, z: 200, talk: [
+      { if: '!quest:s1_doll&!done:s1_doll', script: [L('kid', '嗚嗚……我的小布偶不見了……好像掉到池塘那邊了……', 'sad'), L('hero', '別哭別哭，我幫你找！', 'determined'), QS('s1_doll')] },
+      { if: 'quest:s1_doll&item:lost_doll', script: [L('hero', '找到了！是這個嗎？', 'happy'), TAKE('lost_doll'), L('kid', '是我的布偶！謝謝你，麻美吉哥哥！', 'happy'), FLAG('s1_doll_returned')] },
+      { if: 'quest:s1_doll', script: [L('kid', '布偶在池塘那邊……拜託你了……', 'sad')] },
+      { script: [L('kid', '我和布偶以後都會乖乖的！', 'happy')] },
+    ] },
+  ],
+  enemies: [
+    { id: 'e1a', enemy: 'grumble_blob', party: ['grumble_blob'], x: 1400, z: 160 },
+    { id: 'e1b', enemy: 'grumble_blob', party: ['grumble_blob', 'grumble_blob'], x: 2000, z: 90 },
+    { id: 'e1c', enemy: 'sour_shroom', party: ['sour_shroom', 'grumble_blob'], x: 3000, z: 140 },
+    { id: 'e1d', enemy: 'buzz_bug', party: ['buzz_bug', 'sour_shroom'], x: 3550, z: 80 },
+    { id: 'e1e', enemy: 'grumble_blob', party: ['grumble_blob', 'buzz_bug', 'grumble_blob'], x: 4150, z: 170 },
+  ],
+  chests: [
+    { id: 'c1_1', x: 520, z: 60, items: [{ id: 'apple', qty: 2 }] },
+    { id: 'c1_hidden1', x: 1150, z: 60, items: [{ id: 'sticker_1', qty: 1 }], hidden: true },
+    { id: 'c1_doll', x: 2380, z: 40, items: [{ id: 'lost_doll', qty: 1 }, { id: 'apple', qty: 1 }] },
+    { id: 'c1_2', x: 1900, z: 60, items: [{ id: 'sticker_2', qty: 1 }] },
+    { id: 'c1_bell', x: 3950, z: 110, items: [{ id: 'village_bell', qty: 1 }], showIf: 'found_v1&found_v2&found_v3' },
+    { id: 'c1_hidden2', x: 3700, z: 200, items: [{ id: 'sticker_3', qty: 1 }, { id: 'b_power', qty: 1 }], hidden: true },
+    { id: 'c1_3', x: 4400, z: 200, items: [{ id: 'juice', qty: 2 }, { id: 'power_cookie', qty: 1 }] },
+  ],
+  objects: [
+    { id: 'sign1', type: 'sign', x: 380, z: 150, text: '【操作說明】WASD／方向鍵移動，Space 跳躍，J 或 X 揮鎚子，Enter 或 E 調查／對話，ESC 打開選單。手機請用左下搖桿與右下按鈕。' },
+    { id: 'sign2', type: 'sign', x: 1550, z: 160, text: '裂開的牆壁可以用鎚子敲碎！走過去按攻擊鍵試試看。' },
+    { id: 'wall1', type: 'breakable', x: 1700, z: 0, w: 1, flag: 'ch1_wall' },
+    { id: 'sign3', type: 'sign', x: 2150, z: 200, text: '池塘裡有會動的荷葉。站上去就能過河！掉進水裡會被沖回岸邊喔。' },
+    { id: 'save1', type: 'savepoint', x: 1300, z: 90 },
+    { id: 'gate1', type: 'gate', x: 3800, z: 0, cond: 'found_v1&found_v2&found_v3', w: 1 },
+    { id: 'heal1', type: 'heal', x: 4300, z: 120 },
+    { id: 'save2', type: 'savepoint', x: 4420, z: 70 },
+    { id: 'shard1', type: 'shard', x: 4950, z: 120, showIf: 'boss1&!shard1_got' },
+  ],
+  zones: [
+    { type: 'pit', x: 2220, w: 360, z0: 0, z1: 240, look: 'water' },
+  ],
+  platforms: [
+    { id: 'lily1', x: 2290, z: 120, w: 90, d: 50, dz: 70, period: 3.2, look: 'lily' },
+    { id: 'lily2', x: 2400, z: 110, w: 90, d: 50, dx: 30, dz: -60, period: 2.6, look: 'lily' },
+    { id: 'lily3', x: 2510, z: 120, w: 90, d: 50, dz: 80, period: 3.6, look: 'lily' },
+  ],
+  triggers: [
+    { id: 't1_square', x: 900, w: 60, if: '!ch1_met_elder', once: true, block: true, script: [EMOTE('oyajitchi', '!'), L('oyajitchi', '喂——拿著發光裝置的孩子，過來一下。', 'normal')] },
+    { id: 't1_bellquest', x: 0, w: 5600, if: 'done:q1_villagers&!quest:q1_bell&!done:q1_bell', once: true, script: [
+      L('hero', '三位村民都想起來了！東邊倉庫的門也打開了。', 'happy'), L('kuchipatchi', '老爺爺說的鈴鐺，應該就在倉庫裡！', 'normal'), QS('q1_bell'),
+    ] },
+    { id: 't1_bell', x: 4150, w: 60, if: 'item:village_bell&!t1_bellrang', once: true, script: [
+      FLAG('t1_bellrang'), SFX('item'), L('hero', '搖一搖鈴鐺……叮鈴～叮鈴～', 'happy'), SHAKE(400), L('hero', '廣場那邊傳來好大的聲音！', 'surprised'), QS('q1_boss'),
+    ] },
+  ],
+  boss: {
+    id: 'boss1', enemy: 'chaos_guardian', party: ['chaos_guardian', 'grumble_blob'], x: 4700, z: 120, flag: 'boss1', music: 'boss',
+    pre: [
+      SHAKE(700), SFX('shake'), L('hero', '這、這是廣場的守護石像！？它在動！', 'surprised'),
+      L('shadow', '……碎片的力量很美味吧？就讓這座村莊也停止下來吧。', 'normal'),
+      L('hero', '是誰！？', 'angry'),
+      N('黑影消失了。守護石像的眼睛亮起紅光，衝了過來！'),
+      { do: 'battle', encounter: ['chaos_guardian', 'grumble_blob'], boss: true, flag: 'boss1', music: 'boss' },
+    ],
+    post: [
+      L('hero', '呼……呼……石像停下來了。', 'worried'),
+      SFX('shard'), N('石像的胸口浮出一塊閃閃發光的碎片。'),
+      L('kuchipatchi', '是星之心的碎片！快去拿！', 'surprised'),
+    ],
+  },
+  outro: [
+    FLAG('shard1_got'), GIVE('shard1'), SFX('shard'), FLASH(0xfff6a0),
+    N('取得了星之心碎片（1/8）！村莊的天空稍微亮了一點點。'),
+    L('oyajitchi', '做得好。不過……石像不會自己暴走。那個黑影，你也看到了吧？', 'worried'),
+    L('hero', '嗯……這次的事件，好像不是自然發生的。', 'determined'),
+    L('oyajitchi', '下一塊碎片的光，在南邊的糖果森林。去吧，小發明家。', 'normal'),
+    WAIT(300), { do: 'chapterEnd' },
+  ],
+  quests: ['q1_elder', 'q1_villagers', 'q1_bell', 'q1_boss', 's1_doll', 's1_blobs'],
+  partner: 'kuchipatchi',
+};

@@ -1,0 +1,17 @@
+{
+  "name": "拓麻歌子紙片大冒險 Tamagotchi Paper Adventure",
+  "short_name": "紙片大冒險",
+  "description": "原創拓麻歌子 2.5D 紙片 RPG：失落的星之心",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#ffd666",
+  "theme_color": "#ffb84d",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

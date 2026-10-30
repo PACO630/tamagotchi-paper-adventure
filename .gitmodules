@@ -1,0 +1,3 @@
+[submodule ".claude/skills/hand-drawn"]
+	path = .claude/skills/hand-drawn
+	url = https://github.com/threerocks/hand-drawn-styles.git

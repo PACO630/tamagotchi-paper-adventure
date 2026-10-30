@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Art preview</title></head>
+<body style="background:#e8d8b8;margin:0;padding:10px">
+<div id="out"></div>
+<script type="module">
+import { renderFrame, basePose } from './src/art/characterArt.ts';
+import { renderEnemyFrame } from './src/art/enemyArt.ts';
+import { ENEMIES } from './src/data/enemies.ts';
+import { PROPS, paperCut } from './src/art/paperArt.ts';
+const out = document.getElementById('out');
+const ids = ['mametchi','memetchi','kuchipatchi','mimitchi','violetchi','gozarutchi','maskutchi','oyajitchi'];
+const poses = [{facing:'front'},{facing:'side'},{facing:'back'},{facing:'side',hammer:0.35,lean:7,expr:'angry'},{facing:'front',expr:'happy',armL:2.6,armR:-2.6},{facing:'front',expr:'sad'},{facing:'front',expr:'surprised'},{facing:'side',expr:'hurt'}];
+for (const id of ids) { const row=document.createElement('div'); for (const p of poses) row.appendChild(renderFrame({charId:id}, basePose(p), id+JSON.stringify(p))); out.appendChild(row); }
+const row=document.createElement('div'); for (const [id,e] of Object.entries(ENEMIES)) { const c=renderEnemyFrame(e.art,'idle0',e.traits.includes('spiky'),id); c.style.width='96px'; row.appendChild(c);} out.appendChild(row);
+const row2=document.createElement('div'); for (const [k,s] of Object.entries(PROPS).slice(0,14)) { const c=paperCut(s.w,s.h,g=>s.draw(g,s.w,s.h)); c.style.height='110px'; row2.appendChild(c);} out.appendChild(row2);
+</script></body></html>

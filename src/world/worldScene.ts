@@ -12,14 +12,14 @@ import {
 import { chapterByNum } from '../data/chapters';
 import { ENEMIES } from '../data/enemies';
 import { ITEMS } from '../data/items';
-import type { ChapterDef, ChestDef, NpcDef, ObjDef, Script, ZoneDef } from '../data/types';
+import type { ChapterDef, CharId, ChestDef, NpcDef, ObjDef, Script, ZoneDef } from '../data/types';
 import { input } from '../input/input';
 import { runBattle } from '../battle/battleRunner';
 import { battleActive } from '../battle/battleRunner';
 import { audio } from '../systems/audio';
 import { saves } from '../systems/saveManager';
 import { settings } from '../systems/settings';
-import { runScript, storyRunning, type StoryHost } from '../systems/story';
+import { resetStory, runScript, storyIdleMs, storyRunning, type StoryHost } from '../systems/story';
 import { dialogue } from '../ui/dialogueBox';
 import { confirmDialog, toast } from '../ui/dom';
 import { hud } from '../ui/hud';
@@ -28,11 +28,15 @@ import { playEnding } from '../ui/screens/ending';
 import { openPauseMenu } from '../ui/screens/pauseMenu';
 import { Actor, depthScale, zToY } from './actor';
 import { worldNet } from './worldNet';
+import { session } from '../net/session';
+import { cinema } from '../ui/cinema';
+import { openTutorial } from '../ui/screens/tutorial';
+import { CHARACTERS } from '../data/characters';
 
 interface FieldEnemy { id: string; party: string[]; enemy: string; x0: number; z0: number; range: number; x: number; z: number; spr: Phaser.GameObjects.Sprite; shadow: Phaser.GameObjects.Image; phase: number; chase: boolean; alive: boolean; hop: number; showIf?: string }
 interface ObjView { def: ObjDef; img: Phaser.GameObjects.Image[]; label?: Phaser.GameObjects.Text; broken: boolean; open: boolean }
 interface ChestView { def: ChestDef; img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; revealed: boolean }
-interface NpcView { def: NpcDef; actor: Actor; baseX: number; t: number }
+interface NpcView { def: NpcDef; actor: Actor; baseX: number; t: number; busy?: boolean }
 interface PlatView { id: string; x0: number; z0: number; w: number; d: number; dx: number; dz: number; period: number; img: Phaser.GameObjects.Image; x: number; z: number; vx: number; vz: number }
 interface HazardView { zone: ZoneDef; piston: Phaser.GameObjects.Rectangle; active: boolean }
 
@@ -108,7 +112,12 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     this.buildBoss();
 
     // player
-    const start = G.state.position.x >= 0 ? G.state.position : cd.start;
+    const start = { ...this.safeStart() };
+    // multiplayer: stagger spawn points by join order so players don't stand inside each other
+    if (G.mode === 'multi') {
+      const rank = [...session.roster].sort((x, y) => x.joinOrder - y.joinOrder).findIndex((r) => r.key === session.localKey);
+      if (rank > 0) start.x = clamp(start.x + rank * 70, 40, this.chapter.width - 40);
+    }
     this.player = new Actor(this, { charId: G.localChar }, start.x, clamp(start.z, 10, DEPTH - 10));
     if (worldNet.active) this.player.setLabel(G.local?.playerName ?? '', '#ffe680');
     if (cd.theme.underwater || cd.zones.some((z) => z.look === 'water' || z.look === 'choco')) this.player.enableReflection();
@@ -131,6 +140,12 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     this.buildWeather();
 
     this.interactBubble = this.add.image(0, 0, 'emote_bubble').setDepth(9500).setVisible(false).setScale(0.8);
+    // touch: tapping the "…" / "!" bubble (or the thing under it) interacts
+    this.input.on('pointerdown', (ptr: Phaser.Input.Pointer) => {
+      if (!this.interactBubble.visible || input.blocked || storyRunning() || battleActive() || this.busy) return;
+      const b = this.interactBubble;
+      if (Math.abs(ptr.worldX - b.x) < 80 && ptr.worldY > b.y - 60 && ptr.worldY < b.y + 170) this.tryInteract();
+    });
     this.interactText = this.add.text(0, 0, '!', { fontFamily: FONT, fontSize: '26px', color: '#e8203a' }).setOrigin(0.5).setDepth(9501).setVisible(false);
 
     audio.playMusic(cd.music);
@@ -139,9 +154,13 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
 
     this.offs.push(bus.on('state:changed', (a: any) => this.onStateChanged(a)));
     this.offs.push(bus.on('partner:changed', () => this.refreshPartner()));
-    this.offs.push(bus.on('partner:joined', () => { this.refreshPartner(); audio.sfx('join'); }));
+    this.offs.push(bus.on('partner:joined', (id: CharId) => { this.refreshPartner(); audio.sfx('join'); this.partnerJoinFx(id); }));
     this.offs.push(saves.onBeforeSave((s) => {
-      if (G.mode === 'single' && s === G.state && this.player) s.position = { x: Math.round(this.player.x), z: Math.round(this.player.z) };
+      // only record the position while this map is still the save's current chapter
+      // (after a chapter ends the save already points at the next map)
+      if (G.mode === 'single' && s === G.state && this.player && s.currentChapter === this.chapter.num) {
+        s.position = { x: Math.round(this.player.x), z: Math.round(this.player.z) };
+      }
     }));
     this.events.once('shutdown', () => this.cleanup());
     this.events.once('destroy', () => this.cleanup());
@@ -150,13 +169,19 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     if (G.mode === 'single') saves.startAutosaveTimer();
     // chapter title card, then intro (authority)
     void (async () => {
+      // brand-new single-player game: the animated opening movie comes before everything else
+      if (G.isAuthority && cd.num === 1 && G.mode === 'single' && !G.cond('opening_seen') && !G.cond(`intro:${cd.id}`)) {
+        await this.runStory([{ do: 'opening' }, { do: 'flag', key: 'opening_seen', value: true }]);
+      }
       this.busy = true;
       await showChapterCard(cd);
       this.busy = false;
       if (G.isAuthority && !G.cond(`intro:${cd.id}`)) {
-        G.dispatch({ a: 'flag', k: `intro:${cd.id}`, v: true });
-        await this.runStory(cd.intro);
+        // the flag is the script's first step, so an intro that could not start is retried next time
+        await this.runStory([{ do: 'flag', key: `intro:${cd.id}`, value: true }, ...this.establishingShot(), ...cd.intro]);
       }
+      // first time actually playing: picture-based controls tutorial
+      await this.maybeTutorial();
       // recovery: the shard was already taken (e.g. the page closed during the outro) → finish the chapter
       if (G.isAuthority && cd.num < 8 && G.cond(`shard${cd.num}_got`)) await this.chapterEnd();
       else if (G.isAuthority && cd.num === 8 && G.cond('boss8') && !G.cond('game_clear')) await this.runStory(cd.outro);
@@ -164,6 +189,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   }
 
   private cleanup(): void {
+    if (storyRunning()) resetStory();
     for (const o of this.offs) o();
     this.offs = [];
     hud.unmount();
@@ -374,7 +400,9 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         const open = G.cond(d.cond);
         if (open && !v.open && !instant) {
           audio.sfx('door');
-          for (const img of v.img) this.tweens.add({ targets: img, y: img.y - 260, alpha: 0, duration: 700, ease: 'Back.in' });
+          const view = this.cameras.main.worldView;
+          if (d.x < view.x + 40 || d.x > view.right - 40) this.showOffQueue.push(d.x);
+          for (const img of v.img) this.tweens.add({ targets: img, y: img.y - 260, alpha: 0, delay: this.showOffQueue.length ? 1300 : 0, duration: 700, ease: 'Back.in' });
         } else if (open) v.img.forEach((i) => i.setVisible(false));
         v.open = open;
         break;
@@ -533,6 +561,25 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     hud.update();
   }
 
+  /**
+   * Saved position for this map, unless it is unusable: a position is rejected when a gate or
+   * wall that is still closed lies between the map start and it (old saves could carry the
+   * previous chapter's boss-room position into the next chapter).
+   */
+  private safeStart(): { x: number; z: number } {
+    const cd = this.chapter;
+    const p = G.state.position;
+    if (!(p.x >= 0) || p.x > cd.width) return cd.start;
+    for (const o of cd.objects) {
+      if (o.x <= cd.start.x || o.x >= p.x) continue;
+      const closedGate = o.type === 'gate' && !G.cond(o.cond);
+      const solidWall = o.type === 'breakable' && !!o.w && !(o.flag && G.cond(o.flag));
+      if (closedGate || solidWall) return cd.start;
+    }
+    if (!G.cond(cd.boss.flag) && p.x > cd.boss.x - 300) return cd.start;
+    return p;
+  }
+
   reloadChapter(): void {
     this.cameras.main.fadeOut(300);
     this.time.delayedCall(320, () => this.scene.restart());
@@ -561,6 +608,16 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       if (input.justPressed('menu') || input.justPressed('cancel')) { audio.sfx('menu'); void openPauseMenu(this); }
       else if (input.justPressed('confirm')) this.tryInteract();
       else if (input.justPressed('item')) hud.quickUse();
+    }
+
+    void this.processShowOff();
+    // watchdog: a script that has done nothing for a long time with nothing on screen is stuck → release the player
+    if (storyRunning() && storyIdleMs() > 20000 && !dialogue.open && !battleActive() && !this.scene.isActive('Opening')
+      && !document.querySelector('#ui .layer:not(.out)') && !document.querySelector('.chapter-card')) {
+      console.warn('story watchdog: resetting a stuck script');
+      resetStory();
+      this.cinema(false);
+      void this.follow(0);
     }
 
     this.triggerCheckT -= dt;
@@ -840,6 +897,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     for (const n of this.npcs) {
       if (!n.actor.visible) continue;
       const dx = this.player.x - n.actor.x;
+      if (cinema.active || n.busy) { n.actor.sync(); continue; }
       if (Math.abs(dx) < 160 && Math.abs(this.player.z - n.actor.z) < 80) { n.actor.face(Math.sign(dx), 0); n.actor.play('idle'); }
       else if (n.def.wander) {
         n.t += dt;
@@ -906,11 +964,13 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private nearest(): { kind: string; id: string; x: number; y: number } | null {
     const p = this.player;
     let best: { kind: string; id: string; x: number; y: number; d: number } | null = null;
-    const consider = (kind: string, id: string, x: number, z: number, yOff: number, range = 90) => {
-      const d = Math.hypot(x - p.x, (z - p.z) * 1.4);
-      if (d < range && (!best || d < best.d)) best = { kind, id, x, y: zToY(z) - yOff, d };
+    const consider = (kind: string, id: string, x: number, z: number, yOff: number, range = 90, bias = 0) => {
+      const raw = Math.hypot(x - p.x, (z - p.z) * (kind === 'npc' ? 0.8 : 1.2));
+      const d = raw - bias;
+      if (raw < range && (!best || d < best.d)) best = { kind, id, x, y: zToY(z) - yOff, d };
     };
-    for (const n of this.npcs) if (n.actor.visible) consider('npc', n.def.id, n.actor.x, n.actor.z, 130);
+    // NPCs: generous range (any depth in front of / behind them) and priority over nearby props
+    for (const n of this.npcs) if (n.actor.visible) consider('npc', n.def.id, n.actor.x, n.actor.z, 130, 140, 30);
     for (const c of this.chests) if (c.img.visible && !G.cond(`chest:${c.def.id}`)) consider('chest', c.def.id, c.def.x, c.def.z, 90);
     for (const o of this.objects) {
       const d = o.def;
@@ -997,7 +1057,16 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         const o = this.objects.find((x) => x.def.id === id);
         if (!o || (o.def.showIf && !G.cond(o.def.showIf))) return;
         audio.sfx('shard');
-        await this.runStory(this.chapter.outro);
+        const n = this.chapter.num;
+        await this.runStory([
+          { do: 'cinema', on: true },
+          { do: 'follow', ms: 300 },
+          { do: 'fx', name: 'shardRise', x: o.def.x },
+          { do: 'anim', actor: 'hero', anim: 'win', ms: 1500 },
+          { do: 'banner', title: '取得星之心碎片！', sub: `${n} / 8` },
+          { do: 'wait', ms: 1200 },
+          ...this.chapter.outro,
+        ]);
         break;
       }
       case 'heal': this.healParty(); break;
@@ -1098,12 +1167,22 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private async bossSequence(): Promise<void> {
     const b = this.chapter.boss;
     this.player.x = Math.min(this.player.x, b.x - 280);
-    const ok = await this.runStory(b.pre);
+    const bossName = ENEMIES[b.enemy]?.name ?? '';
+    const entrance: Script = [
+      { do: 'cinema', on: true },
+      { do: 'pan', x: b.x - 160, ms: 1400 },
+      { do: 'fx', name: 'bossRoar' },
+      { do: 'banner', title: 'BOSS', sub: bossName },
+      { do: 'wait', ms: 900 },
+      { do: 'follow', ms: 500 },
+    ];
+    const ok = await this.runStory([...entrance, ...b.pre]);
     if (!ok || !G.cond(b.flag)) return;
     bus.emit('boss:defeated', b.id);
     bus.emit('autosave', 'boss');
-    await this.runStory(b.post);
-    if (!this.chapter.objects.some((o) => o.type === 'shard')) await this.runStory(this.chapter.outro);
+    const victory: Script = [{ do: 'cinema', on: true }, { do: 'follow', ms: 0 }, { do: 'anim', actor: 'hero', anim: 'win', ms: 1400 }, { do: 'fx', name: 'bossFade' }];
+    await this.runStory([...victory, ...b.post]);
+    if (!this.chapter.objects.some((o) => o.type === 'shard')) await this.runStory([{ do: 'cinema', on: true }, { do: 'fx', name: 'starburst', actor: 'hero' }, { do: 'anim', actor: 'hero', anim: 'win', ms: 1600 }, ...this.chapter.outro]);
   }
 
   async runStory(script: Script, silent = false): Promise<boolean> {
@@ -1137,6 +1216,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
 
   /** StoryHost + field battles. */
   async battle(encounter: string[], opts: { boss?: boolean; music?: string; first?: 'party' | 'enemy' | null; firstKind?: 'hammer' | 'jump' }): Promise<'win' | 'lose' | 'flee'> {
+    if (cinema.active) { this.cinema(false); this.broadcastFx('cinema', false); }
+    await this.follow(0);
     this.player.play('idle');
     for (;;) {
       const snapshot = JSON.parse(JSON.stringify({ hp: G.state.playerHP, sp: G.state.playerSP, php: G.state.partners.hp, psp: G.state.partners.sp }));
@@ -1209,11 +1290,227 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   }
 
   moveActor(actor: string, x: number, z?: number): Promise<void> {
-    const a = actor === 'player' || actor === 'hero' ? this.player : this.npcs.find((n) => n.def.id === actor)?.actor;
+    const a = this.actorOf(actor);
     if (!a) return Promise.resolve();
-    a.face(Math.sign(x - a.x), 0);
+    const npc = this.npcs.find((n) => n.actor === a);
+    if (npc) npc.busy = true;
+    a.face(Math.sign(x - a.x) || a.facingX, 0);
     a.play('walk');
-    return new Promise((r) => this.tweens.add({ targets: a, x, z: z ?? a.z, duration: Math.abs(x - a.x) * 4 + 200, onUpdate: () => a.sync(), onComplete: () => { a.play('idle'); r(); } }));
+    return new Promise((r) => this.tweens.add({
+      targets: a, x, z: z ?? a.z, duration: Math.abs(x - a.x) * 4 + 200,
+      onUpdate: () => a.sync(),
+      onComplete: () => { a.play('idle'); if (npc) npc.busy = false; r(); },
+    }));
+  }
+
+  /* ======================= cutscene host ======================= */
+
+  private actorOf(name: string): Actor | null {
+    if (name === 'player' || name === 'hero') return this.player;
+    if (name === 'partner') return this.partner;
+    return this.npcs.find((n) => n.def.id === name)?.actor ?? null;
+  }
+
+  cinema(on: boolean): void {
+    if (on) cinema.on(); else cinema.off();
+    this.player.locked = on;
+    hud.setVisible(!on);
+  }
+
+  pan(x: number, ms: number): Promise<void> {
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    const tx = clamp(x, cam.width / 2, this.chapter.width - cam.width / 2);
+    if (ms <= 0) { cam.centerOn(tx, cam.midPoint.y); return Promise.resolve(); }
+    return new Promise((r) => {
+      cam.pan(tx, cam.midPoint.y, ms, 'Sine.easeInOut', true);
+      this.time.delayedCall(ms + 30, () => r());
+    });
+  }
+
+  async follow(ms: number): Promise<void> {
+    if (!this.player) return;
+    if (ms > 0) await this.pan(this.player.x, ms);
+    this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 120);
+  }
+
+  zoom(z: number, ms: number): Promise<void> {
+    const cam = this.cameras.main;
+    if (ms <= 0) { cam.setZoom(z); return Promise.resolve(); }
+    return new Promise((r) => { cam.zoomTo(z, ms, 'Sine.easeInOut', true); this.time.delayedCall(ms + 30, () => r()); });
+  }
+
+  placeActor(actor: string, x: number, z?: number): void {
+    const a = this.actorOf(actor);
+    if (!a) return;
+    a.x = x;
+    if (z !== undefined) a.z = z;
+    a.y = 0;
+    a.sync();
+    if (a === this.player) this.trail = [];
+    if (a === this.player && this.partner) { this.partner.x = x - 60; this.partner.z = a.z; this.partner.sync(); }
+  }
+
+  jumpActor(actor: string): Promise<void> {
+    if (actor === 'boss' && this.bossSprite) {
+      const b = this.bossSprite;
+      audio.sfx('jump', 0.7);
+      return new Promise((r) => this.tweens.add({ targets: b, y: b.y - 90, yoyo: true, duration: 320, ease: 'Quad.out', onComplete: () => { this.shake(250); r(); } }));
+    }
+    const a = this.actorOf(actor);
+    if (!a) return Promise.resolve();
+    audio.sfx('jump');
+    a.spin();
+    a.play('jump', true);
+    const o = { y: 0 };
+    return new Promise((r) => this.tweens.add({
+      targets: o, y: 110, yoyo: true, duration: 300, ease: 'Quad.out',
+      onUpdate: () => { a.y = o.y; a.sync(); },
+      onComplete: () => { a.y = 0; a.play('idle', true); a.sync(); audio.sfx('land'); r(); },
+    }));
+  }
+
+  animActor(actor: string, anim: string, ms: number): Promise<void> {
+    const a = this.actorOf(actor);
+    if (!a) return Promise.resolve();
+    a.play(anim as any, true);
+    if (anim === 'win') { a.spin(); this.paperBurst(a.x, zToY(a.z) - 80, 0xfff6a0, 18); audio.sfx('levelup'); }
+    if (ms <= 0) { a.play('idle', true); return Promise.resolve(); }
+    return new Promise((r) => this.time.delayedCall(ms, () => { a.play('idle', true); r(); }));
+  }
+
+  faceActor(actor: string, dir: 1 | -1): void {
+    this.actorOf(actor)?.face(dir, 0);
+  }
+
+  /** Named visual effects used by cutscenes. */
+  fx(name: string, actor?: string, x?: number): Promise<void> {
+    const a = actor ? this.actorOf(actor) : null;
+    const px = x ?? a?.x ?? this.player.x;
+    const py = a ? zToY(a.z) - 80 : GROUND_TOP + 40;
+    const delay = (ms: number) => new Promise<void>((r) => this.time.delayedCall(ms, () => r()));
+    switch (name) {
+      case 'bossRoar': {
+        const b = this.bossSprite;
+        audio.sfx('shake');
+        this.shake(600);
+        if (b) {
+          const s = b.scaleX;
+          this.tweens.add({ targets: b, scaleX: s * 1.25, scaleY: s * 0.8, yoyo: true, repeat: 2, duration: 140 });
+          this.paperBurst(b.x, b.y - 80, 0xff6060, 24);
+        }
+        return delay(900);
+      }
+      case 'bossFade': {
+        const b = this.bossSprite;
+        if (b) this.tweens.add({ targets: b, alpha: 0.25, scaleX: b.scaleX * 0.6, duration: 900 });
+        return delay(600);
+      }
+      case 'shardRise': {
+        const img = this.add.image(px, GROUND_TOP + 40, ensureObject(this, 'shard')).setDepth(9400).setScale(0.6);
+        const glow = this.add.image(px, GROUND_TOP + 40, 'p_warm').setDepth(9399).setBlendMode(Phaser.BlendModes.ADD).setScale(1);
+        audio.sfx('shard');
+        this.tweens.add({ targets: [img, glow], y: GROUND_TOP - 150, duration: 1100, ease: 'Sine.out' });
+        this.tweens.add({ targets: img, angle: 360, scale: 1.2, duration: 1100 });
+        this.tweens.add({ targets: glow, scale: 4, alpha: 0.9, duration: 1100 });
+        return delay(1150).then(async () => {
+          this.flash(0xfff6c0);
+          this.paperBurst(img.x, img.y, 0xfff6a0, 30);
+          this.tweens.add({ targets: [img, glow], x: this.player.x, y: zToY(this.player.z) - 70, scale: 0.1, alpha: 0, duration: 600, ease: 'Quad.in', onComplete: () => { img.destroy(); glow.destroy(); } });
+          await delay(650);
+        });
+      }
+      case 'starburst': {
+        this.flash(0xffffff);
+        const p = this.add.particles(px, py, 'p_star', { speed: { min: 120, max: 420 }, lifespan: 1200, quantity: 40, scale: { start: 1.4, end: 0 }, emitting: false }).setDepth(9400);
+        p.explode(48);
+        audio.sfx('shard');
+        this.time.delayedCall(1400, () => p.destroy());
+        return delay(1000);
+      }
+      case 'sparkle': {
+        const p = this.add.particles(px, py, 'p_star', { speed: { min: 40, max: 160 }, lifespan: 800, quantity: 16, scale: { start: 1, end: 0 }, emitting: false }).setDepth(9400);
+        p.explode(18);
+        audio.sfx('magic');
+        this.time.delayedCall(1000, () => p.destroy());
+        return delay(500);
+      }
+      case 'darkPuff': {
+        const p = this.add.particles(px, py, 'p_mote', { speed: { min: 60, max: 220 }, lifespan: 1000, quantity: 30, scale: { start: 2, end: 0 }, emitting: false }).setDepth(9400);
+        p.explode(36);
+        audio.sfx('shake');
+        this.time.delayedCall(1200, () => p.destroy());
+        return delay(700);
+      }
+      default:
+        this.paperBurst(px, py);
+        return delay(300);
+    }
+  }
+
+  opening(): Promise<void> {
+    return new Promise((resolve) => {
+      const sc = this.scene.get('Opening') as any;
+      sc.onDone = () => { this.scene.stop('Opening'); this.scene.resume(); hud.setVisible(!cinema.active); audio.playMusic(this.chapter.music); resolve(); };
+      hud.setVisible(false);
+      this.scene.pause();
+      this.scene.run('Opening');
+    });
+  }
+
+  /** Establishing shot for a chapter's first visit: pan over the map, then the hero walks in. */
+  private establishingShot(): Script {
+    const cd = this.chapter;
+    return [
+      { do: 'cinema', on: true },
+      { do: 'place', actor: 'hero', x: Math.max(40, cd.start.x - 280), z: cd.start.z },
+      { do: 'pan', x: cd.boss.x, ms: 0 },
+      { do: 'pan', x: cd.start.x + 300, ms: 4200, nowait: true },
+      { do: 'caption', text: `${cd.location}——${cd.summary}`, ms: 3900 },
+      { do: 'move', actor: 'hero', x: cd.start.x, z: cd.start.z },
+      { do: 'jump', actor: 'hero' },
+      { do: 'follow', ms: 400 },
+      { do: 'cinema', on: false },
+    ];
+  }
+
+  private partnerJoinFx(id: CharId): void {
+    const pa = this.partner;
+    cinema.flashBanner(`${CHARACTERS[id]?.name ?? ''} 加入了隊伍！`, CHARACTERS[id]?.fieldAbility ?? '');
+    if (!pa) return;
+    this.paperBurst(pa.x, zToY(pa.z) - 60, 0xfff6a0, 22);
+    pa.spin();
+    const o = { y: 0 };
+    this.tweens.add({ targets: o, y: 90, yoyo: true, duration: 280, ease: 'Quad.out', onUpdate: () => { pa.y = o.y; pa.sync(); }, onComplete: () => { pa.y = 0; pa.sync(); } });
+  }
+
+  /** Off-screen events (a gate opening) are shown with a short camera pan. */
+  private showOffQueue: number[] = [];
+  private showingOff = false;
+
+  private async processShowOff(): Promise<void> {
+    if (this.showingOff || !this.showOffQueue.length || storyRunning() || battleActive() || this.busy || dialogue.open) return;
+    this.showingOff = true;
+    const x = this.showOffQueue.shift()!;
+    this.cinema(true);
+    await this.pan(x, 900);
+    await new Promise((r) => this.time.delayedCall(1400, r));
+    await this.follow(700);
+    this.cinema(false);
+    this.showingOff = false;
+  }
+
+  /** Picture-based controls tutorial, shown once when a new game actually becomes playable. */
+  private async maybeTutorial(): Promise<void> {
+    const seenLocal = (() => { try { return localStorage.getItem('tpa.tutorialSeen') === '1'; } catch { return false; } })();
+    const seen = G.mode === 'single' ? G.cond('tutorial_shown') : seenLocal;
+    if (seen) return;
+    while (storyRunning() || battleActive() || dialogue.open) await new Promise((r) => setTimeout(r, 300));
+    this.busy = true;
+    await openTutorial();
+    this.busy = false;
+    if (G.mode === 'single') G.dispatch({ a: 'flag', k: 'tutorial_shown', v: true });
+    try { localStorage.setItem('tpa.tutorialSeen', '1'); } catch { /* ignore */ }
   }
 
   setActorVisible(actor: string, v: boolean): void {
@@ -1243,6 +1540,15 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       case 'emote': this.emote(data.actor, data.emote); break;
       case 'chapterClear': void showChapterClear(chapterByNum(data)); break;
       case 'ending': void playEnding().then(() => bus.emit('app:title')); break;
+      case 'cinema': this.cinema(!!data); break;
+      case 'pan': void this.pan(data.x, data.ms); break;
+      case 'follow': void this.follow(data); break;
+      case 'zoom': void this.zoom(data.z, data.ms); break;
+      case 'jump': void this.jumpActor(data); break;
+      case 'anim': void this.animActor(data.actor, data.anim, data.ms); break;
+      case 'caption': void cinema.caption(data.text, data.ms); break;
+      case 'banner': cinema.flashBanner(data.title, data.sub ?? ''); break;
+      case 'fx': void this.fx(data.name, data.actor, data.x); break;
       case 'item': toast(`${G.local?.playerName ?? ''} 取得 ${ITEMS[data]?.name ?? data}`, 'good'); break;
     }
   }

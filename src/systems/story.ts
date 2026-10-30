@@ -10,6 +10,7 @@ import { SPEAKERS } from '../data/chapters/helpers';
 import type { ChapterDef, CharId, Expr, Script, ScriptStep } from '../data/types';
 import { dialogue, type Line } from '../ui/dialogueBox';
 import { audio } from './audio';
+import { cinema } from '../ui/cinema';
 
 export interface StoryHost {
   chapter: ChapterDef;
@@ -23,6 +24,17 @@ export interface StoryHost {
   chapterEnd(): Promise<void>;
   ending(): Promise<void>;
   save(): void;
+  // cutscene support
+  cinema(on: boolean): void;
+  pan(x: number, ms: number): Promise<void>;
+  follow(ms: number): Promise<void>;
+  zoom(z: number, ms: number): Promise<void>;
+  placeActor(actor: string, x: number, z?: number): void;
+  jumpActor(actor: string): Promise<void>;
+  animActor(actor: string, anim: string, ms: number): Promise<void>;
+  faceActor(actor: string, dir: 1 | -1): void;
+  fx(name: string, actor?: string, x?: number): Promise<void>;
+  opening(): Promise<void>;
   /** Multiplayer: mirror dialogue to clients. */
   broadcastDialogue?(kind: 'line' | 'adv' | 'choice' | 'pick' | 'end' | 'skip', data?: any): void;
   broadcastFx?(kind: string, data: any): void;
@@ -78,40 +90,79 @@ export function buildLine(who: string, text: string, face: Expr | undefined, cha
 }
 
 let running = false;
+let fastForward = false;
+let lastActivity = 0;
+/** Bumped by resetStory(): a script from an older epoch stops at its next step. */
+let epoch = 0;
 
 export function storyRunning(): boolean {
   return running;
 }
 
+/** Skip button on cutscenes: fast-forwards the rest of the running script (choices still asked). */
+export function skipStory(): void {
+  if (!running) return;
+  fastForward = true;
+  dialogue.requestSkip();
+  cinema.clearCaption();
+}
+
+/** Seconds since the running script last did anything (watchdog for stuck scripts). */
+export function storyIdleMs(): number {
+  return running ? performance.now() - lastActivity : 0;
+}
+
+/** Emergency reset when a script got stuck (e.g. an awaited animation never finished). */
+export function resetStory(): void {
+  epoch++;
+  running = false;
+  fastForward = false;
+  dialogue.hide();
+  cinema.off();
+}
+
+const ff = () => fastForward || dialogue.skipping;
+cinema.onSkip = skipStory;
+
 /** Runs a script. Resolves true when finished, false when aborted (e.g. battle lost). */
 export async function runScript(script: Script, host: StoryHost): Promise<boolean> {
   if (running) return false;
   running = true;
+  fastForward = false;
+  lastActivity = performance.now();
+  const mine = epoch;
   dialogue.canAdvance = true;
   dialogue.onAdvance = () => host.broadcastDialogue?.('adv');
   dialogue.onSkip = () => host.broadcastDialogue?.('skip');
   try {
-    await exec(script, host);
+    await exec(script, host, mine);
     return true;
   } catch (e) {
     if (!(e instanceof ScriptAbort)) console.error(e);
     return false;
   } finally {
+    // the scene that owned this script was torn down (chapter change, title…): leave the new state alone
+    if (mine !== epoch) return false;
     dialogue.hide();
     dialogue.onAdvance = null;
     dialogue.onSkip = null;
     host.broadcastDialogue?.('end');
+    if (cinema.active) { host.cinema(false); host.broadcastFx?.('cinema', false); }
+    void host.follow(0);
     running = false;
+    fastForward = false;
   }
 }
 
-async function exec(steps: ScriptStep[], host: StoryHost): Promise<void> {
+async function exec(steps: ScriptStep[], host: StoryHost, mine: number): Promise<void> {
   const labels = new Map<string, number>();
   steps.forEach((s, i) => { if ('label' in s) labels.set(s.label, i); });
   for (let i = 0; i < steps.length; i++) {
+    if (mine !== epoch) throw new ScriptAbort('reset');
     const s = steps[i];
+    lastActivity = performance.now();
     if ('who' in s && 'text' in s) {
-      if (dialogue.skipping) continue;
+      if (ff()) continue;
       const line = buildLine(s.who, s.text, s.face, host.chapter);
       host.broadcastDialogue?.('line', { who: s.who, text: s.text, face: s.face });
       await dialogue.say(line);
@@ -135,7 +186,7 @@ async function exec(steps: ScriptStep[], host: StoryHost): Promise<void> {
     }
     if ('end' in s) return;
     if ('if' in s) {
-      await exec(G.cond(s.if) ? s.then : s.else ?? [], host);
+      await exec(G.cond(s.if) ? s.then : s.else ?? [], host, mine);
       continue;
     }
     switch (s.do) {
@@ -154,7 +205,27 @@ async function exec(steps: ScriptStep[], host: StoryHost): Promise<void> {
       case 'flash': host.flash(s.color ?? 0xffffff); host.broadcastFx?.('flash', s.color ?? 0xffffff); break;
       case 'sfx': audio.sfx(s.id); host.broadcastFx?.('sfx', s.id); break;
       case 'music': audio.playMusic(s.id); host.broadcastFx?.('music', s.id); break;
-      case 'wait': await new Promise((r) => setTimeout(r, dialogue.skipping ? 0 : s.ms)); break;
+      case 'wait': await new Promise((r) => setTimeout(r, ff() ? 0 : s.ms)); break;
+      case 'cinema': host.cinema(s.on); host.broadcastFx?.('cinema', s.on); break;
+      case 'pan': {
+        host.broadcastFx?.('pan', { x: s.x, ms: s.ms ?? 1200 });
+        const p = host.pan(s.x, ff() ? 0 : s.ms ?? 1200);
+        if (!s.nowait) await p;
+        break;
+      }
+      case 'follow': host.broadcastFx?.('follow', s.ms ?? 600); await host.follow(ff() ? 0 : s.ms ?? 600); break;
+      case 'zoom': host.broadcastFx?.('zoom', { z: s.z, ms: s.ms ?? 800 }); await host.zoom(s.z, ff() ? 0 : s.ms ?? 800); break;
+      case 'place': host.placeActor(s.actor, s.x, s.z); break;
+      case 'jump': host.broadcastFx?.('jump', s.actor); if (!ff()) await host.jumpActor(s.actor); break;
+      case 'anim': host.broadcastFx?.('anim', { actor: s.actor, anim: s.anim, ms: s.ms ?? 900 }); await host.animActor(s.actor, s.anim, ff() ? 0 : s.ms ?? 900); break;
+      case 'face': host.faceActor(s.actor, s.dir); break;
+      case 'caption':
+        host.broadcastFx?.('caption', { text: G.fmt(s.text), ms: s.ms ?? 2600 });
+        if (!ff()) await cinema.caption(G.fmt(s.text), s.ms ?? 2600);
+        break;
+      case 'banner': host.broadcastFx?.('banner', { title: G.fmt(s.title), sub: s.sub }); if (!ff()) cinema.flashBanner(G.fmt(s.title), s.sub ? G.fmt(s.sub) : ''); break;
+      case 'fx': host.broadcastFx?.('fx', { name: s.name, actor: s.actor, x: s.x }); if (!ff()) await host.fx(s.name, s.actor, s.x); break;
+      case 'opening': if (!ff()) await host.opening(); break;
       case 'emote': host.emote(s.actor, s.emote); host.broadcastFx?.('emote', { actor: s.actor, emote: s.emote }); break;
       case 'move': await host.moveActor(s.actor, s.x, s.z); break;
       case 'hide': host.setActorVisible(s.actor, false); break;

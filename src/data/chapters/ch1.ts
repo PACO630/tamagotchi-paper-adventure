@@ -1,6 +1,13 @@
 import type { ChapterDef } from '../types';
 import { EMOTE, FLAG, FLASH, GIVE, IF, JOIN, L, LOOKS, MUSIC, N, QS, SFX, SHAKE, TAKE, WAIT } from './helpers';
 
+/** The warehouse gate only opens once all three lost villagers remember who they are. */
+const GATE_HINT = IF('found_v1&found_v2', [], [
+  L('v3', '倉庫的鐵門要等村裡迷路的三個人都恢復記憶，才會打開喔。', 'worried'),
+  IF('!found_v1', [L('v3', '小圓好像被困在村莊廣場東邊、裂開的牆壁後面。用鎚子把牆敲開吧！', 'normal')]),
+  IF('!found_v2', [L('v3', '花花奶奶在小池塘的另一邊。跳過池塘去找她吧！', 'normal')]),
+]);
+
 export const ch1: ChapterDef = {
   id: 'ch1', num: 1, title: '第一章：消失的星光', location: '拓麻歌子村莊',
   summary: '星之心碎裂的那一晚，村莊失去了顏色。麻美吉的星之感應器突然響了起來…',
@@ -13,9 +20,11 @@ export const ch1: ChapterDef = {
   mapNodes: [{ name: '麻美吉的家', x: 200 }, { name: '村莊廣場', x: 1000 }, { name: '小池塘', x: 2300 }, { name: '東邊倉庫', x: 3900 }, { name: '守護者廣場', x: 4700 }],
   intro: [
     MUSIC('village'),
-    N('那是一個很安靜的夜晚。拓麻歌子星球上，大家都睡得香甜。'),
-    SHAKE(900), SFX('shake'), FLASH(0xffffff),
-    N('突然，天空裂開了一道大縫——高掛天空的「星之心」碎成了八塊，往世界各地飛散！'),
+    IF('!opening_seen', [
+      N('那是一個很安靜的夜晚。拓麻歌子星球上，大家都睡得香甜。'),
+      SHAKE(900), SFX('shake'), FLASH(0xffffff),
+      N('突然，天空裂開了一道大縫——高掛天空的「星之心」碎成了八塊，往世界各地飛散！'),
+    ]),
     L('hero', '哇啊啊！？剛剛是什麼聲音！', 'surprised'),
     L('hero', '天空……天空怎麼變得灰灰的？連花都失去顏色了……', 'worried'),
     SFX('magic'),
@@ -68,8 +77,9 @@ export const ch1: ChapterDef = {
       { script: [L('v2', '等星之心回來，我的花園一定會再開滿花。', 'happy')] },
     ] },
     { id: 'v3', name: '迷路的阿守', look: LOOKS.guard, x: 3320, z: 180, talk: [
-      { if: '!found_v3', script: [L('v3', '站住！……呃，我要守護什麼來著？', 'surprised'), L('hero', '你是村莊的守衛阿守呀！', 'happy'), L('v3', '沒錯！我是守衛！我想起來了！', 'determined'), FLAG('found_v3'), SFX('quest'), L('v3', '果凍們都變得好兇。如果你能幫我打倒 3 隻，我會好好謝謝你！', 'normal')] },
-      { script: [L('v3', '倉庫的門我已經幫你打開了，鈴鐺就在裡面！', 'happy')] },
+      { if: '!found_v3', script: [L('v3', '站住！……呃，我要守護什麼來著？', 'surprised'), L('hero', '你是村莊的守衛阿守呀！', 'happy'), L('v3', '沒錯！我是守衛！我想起來了！', 'determined'), FLAG('found_v3'), SFX('quest'), L('v3', '果凍們都變得好兇。如果你能幫我打倒 3 隻，我會好好謝謝你！', 'normal'), GATE_HINT] },
+      { if: 'found_v1&found_v2', script: [L('v3', '村民們都想起來了！倉庫的鐵門已經打開，鈴鐺就在裡面！', 'happy')] },
+      { script: [GATE_HINT] },
     ] },
     { id: 'kid', name: '哭泣的小芽', look: LOOKS.kid, x: 1250, z: 200, talk: [
       { if: '!quest:s1_doll&!done:s1_doll', script: [L('kid', '嗚嗚……我的小布偶不見了……好像掉到池塘那邊了……', 'sad'), L('hero', '別哭別哭，我幫你找！', 'determined'), QS('s1_doll')] },

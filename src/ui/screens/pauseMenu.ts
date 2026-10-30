@@ -15,7 +15,7 @@ import { CATEGORY, itemsOf, toggleBadge, useFieldItem } from '../../systems/inve
 import { saves } from '../../systems/saveManager';
 import { BADGE_SLOTS } from '../../systems/saveSchema';
 import { btn, confirmDialog, h, Layer, toast } from '../dom';
-import { openHelp } from './help';
+import { openTutorial } from './tutorial';
 import { uiIcon } from '../../art/uiIcons';
 import { openSaveManager } from './saveManagerScreen';
 import { openSettings } from './settingsScreen';
@@ -185,7 +185,7 @@ const render: Record<Tab, (el: HTMLElement, refresh: () => void, close: () => vo
     col.append(
       btn('[gear]遊戲設定', () => void openSettings()),
       btn('[folder]存檔管理（匯出／匯入）', () => void openSaveManager()),
-      btn('[question]操作說明', () => void openHelp()),
+      btn('[question]操作說明', () => void openTutorial()),
       btn('[house]返回主選單', async () => {
         const ok = await confirmDialog('返回主選單', G.mode === 'single' ? '目前進度會自動保存。確定要返回主選單嗎？' : '離開多人遊戲並返回主選單？');
         if (ok) { close(); bus.emit('app:title'); }

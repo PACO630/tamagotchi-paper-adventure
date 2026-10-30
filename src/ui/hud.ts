@@ -43,7 +43,7 @@ class Hud {
     this.map.append(h('div', { class: 'map-boss', style: { left: (cd.boss.x / cd.width) * 100 + '%' } }, uiIcon('boss')));
     const menuBtn = h('button', { class: 'hud-btn', type: 'button', title: '選單 (ESC)' }, uiIcon('menu'));
     menuBtn.addEventListener('click', () => input.press('menu'));
-    const fsBtn = h('button', { class: 'hud-btn', type: 'button', title: '全螢幕' }, uiIcon('fullscreen'));
+    const fsBtn = h('button', { class: 'hud-btn fs', type: 'button', title: '全螢幕' }, uiIcon('fullscreen'));
     fsBtn.addEventListener('click', () => toggleFullscreen());
     this.el = h('div', { class: 'hud' },
       h('div', { class: 'hud-left' }, this.party),

@@ -154,6 +154,19 @@ export type ScriptStep =
   | { do: 'ending' }
   | { do: 'save' }
   | { do: 'tint'; color: number }
+  // ---- cutscene steps ----
+  | { do: 'cinema'; on: boolean }
+  | { do: 'pan'; x: number; ms?: number; nowait?: boolean }
+  | { do: 'follow'; ms?: number }
+  | { do: 'zoom'; z: number; ms?: number }
+  | { do: 'place'; actor: string; x: number; z?: number }
+  | { do: 'jump'; actor: string }
+  | { do: 'anim'; actor: string; anim: string; ms?: number }
+  | { do: 'face'; actor: string; dir: 1 | -1 }
+  | { do: 'caption'; text: string; ms?: number }
+  | { do: 'banner'; title: string; sub?: string }
+  | { do: 'fx'; name: string; actor?: string; x?: number }
+  | { do: 'opening' }
   | { choice: { text: string; flag?: [string, boolean | number | string]; goto?: string }[]; who?: string; prompt?: string }
   | { label: string }
   | { goto: string }

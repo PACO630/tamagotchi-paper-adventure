@@ -48,10 +48,17 @@ class Input {
     if (!this.blocked) this.pressed.add(b);
   }
 
+  /** Every new finger press counts, even if a previous release was never delivered. */
   touchDown(b: Btn): void {
     this.lastDevice = 'touch';
-    if (!this.touchHeld.has(b)) this.press(b);
+    this.press(b);
     this.touchHeld.add(b);
+  }
+
+  /** Drop all held touch buttons (used when the controls are hidden mid-press). */
+  releaseTouch(): void {
+    this.touchHeld.clear();
+    this.stick.x = this.stick.y = 0;
   }
 
   touchUp(b: Btn): void {

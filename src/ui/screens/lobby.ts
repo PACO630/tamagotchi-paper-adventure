@@ -50,6 +50,8 @@ export function openLobby(): Promise<'start' | 'back'> {
     };
 
     const room = () => {
+      // the create/join step marked the card busy (buttons disabled); the room view must be interactive
+      card.classList.remove('busy');
       card.innerHTML = '';
       const rosterEl = h('div', { class: 'roster' });
       const chars = h('div', { class: 'char-grid' });

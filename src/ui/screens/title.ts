@@ -15,7 +15,6 @@ import { btn, confirmDialog, h, Layer, promptDialog, toast } from '../dom';
 import { toggleFullscreen } from '../fullscreen';
 import { uiIcon } from '../../art/uiIcons';
 import { openCredits } from './credits';
-import { openHelp } from './help';
 import { openSaveManager } from './saveManagerScreen';
 import { openSettings } from './settingsScreen';
 
@@ -42,7 +41,6 @@ export function openMainMenu(): Promise<MenuResult> {
       if (returning && last) {
         menu.append(btn('[play]繼續冒險', async () => play(await saves.load(last.slot)), { cls: 'primary big' }));
         menu.append(h('div', { class: 'continue-info' }, `第${last.slot}格・${chapterByNum(last.currentChapter).title}・Lv.${last.playerLevel}・${formatTime(last.totalPlayTime)}`));
-        menu.append(btn('[plus]開始新遊戲', async () => { const s = await pickSlot('new'); if (s) play(s); }));
       } else {
         menu.append(btn('[play]開始冒險', async () => { const s = await saves.newGame(prefs.lastSlot); play(s); }, { cls: 'primary big' }));
       }
@@ -51,10 +49,9 @@ export function openMainMenu(): Promise<MenuResult> {
         btn('[people]多人模式', () => done({ kind: 'multi' })),
         btn('[gear]遊戲設定', () => void openSettings()),
         btn('[folder]存檔管理', () => void openSaveManager().then(build)),
-        btn('[question]操作說明', () => void openHelp()),
         btn('[film]製作人員', () => void openCredits()),
       );
-      if (returning) menu.insertBefore(btn('[notebook]玩家資料', () => void openProfile().then(build)), menu.querySelector('.btn:nth-last-child(4)'));
+      if (returning) menu.insertBefore(btn('[notebook]玩家資料', () => void openProfile().then(build)), menu.querySelector('.btn:nth-last-child(3)'));
       const fs = h('button', { class: 'corner-btn', type: 'button', title: '全螢幕' }, uiIcon('fullscreen'));
       fs.addEventListener('click', () => void toggleFullscreen());
       layer.el.append(h('div', { class: 'title-wrap' }, logo, greet, menu), fs);

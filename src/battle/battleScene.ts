@@ -570,12 +570,22 @@ export class BattleScene extends Phaser.Scene {
     const plus = spec.badges.includes('b_perfect') ? 1.5 : 1;
     const k = (spec.hard ? 0.6 : 1) * plus;
     const mark = this.add.text(tgt.c.x, this.headY(tgt) - 40, '!', { fontFamily: FONT, fontSize: '48px', color: '#ffd23a', stroke: '#2a1a0a', strokeThickness: 8 }).setOrigin(0.5).setDepth(1300);
-    const tip = this.promptText(this.touchUI ? '敵人衝過來時點畫面防禦！' : '敵人攻擊時按下 確認 防禦！', 170);
+    const tip = this.promptText(this.touchUI ? '藍色光圈縮到最小時，點畫面防禦！' : '藍色光圈縮到最小時，按下 確認 防禦！', 170);
     const windup = 520 + Math.random() * 500; // unpredictable lunge timing
+    // shrinking guard ring (like the hammer ring): block when it meets the inner circle
+    const gx = tgt.c.x, gy = this.headY(tgt) + 34;
+    const inner = this.add.circle(gx, gy, 30, 0x9fd8ff, 0.28).setStrokeStyle(5, 0xffffff).setDepth(1250);
+    const ring = this.add.circle(gx, gy, 150, 0x000000, 0).setStrokeStyle(6, 0x4aa8ff).setDepth(1251);
+    this.tweens.add({ targets: ring, radius: 30, duration: windup, ease: 'Linear' });
+    this.tweens.add({ targets: inner, alpha: { from: 0.6, to: 1 }, duration: 160, yoyo: true, repeat: -1 });
     att.spr.stop();
     att.spr.setFrame('attack');
     this.tweens.add({ targets: att.c, x: tgt.c.x + 120, delay: windup - 260, duration: 260, ease: 'Quad.in' });
     const t = await this.waitPress((b) => b === 'confirm' || b === 'jump' || b === 'attack', windup + 260);
+    this.tweens.killTweensOf(ring);
+    this.tweens.killTweensOf(inner);
+    if (t !== null && Math.abs(t - windup) < 70 * k) { ring.setStrokeStyle(8, 0xffd23a); inner.setFillStyle(0xffd23a, 0.5); }
+    this.tweens.add({ targets: [ring, inner], alpha: 0, scale: 1.3, duration: 220, onComplete: () => { ring.destroy(); inner.destroy(); } });
     mark.destroy(); tip.destroy();
     this.tweens.killTweensOf(att.c);
     if (t === null) return 'fail';

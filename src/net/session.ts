@@ -386,6 +386,7 @@ class Session {
 
   canStart(): string | null {
     const active = this.roster.filter((r) => r.connected);
+    if (active.length < 2) return '至少需要 2 位玩家才能開始（最多 4 人）。';
     if (active.some((r) => !r.charId)) return '還有玩家沒有選擇角色。';
     return null;
   }

@@ -76,7 +76,11 @@ class TouchControls {
     bus.on('touch:dpad', (on: boolean) => this.root.classList.toggle('dpad-on', !!on));
     window.addEventListener('resize', () => this.refresh());
     // hide field controls while dialogue / menus are open so they never cover them
-    window.setInterval(() => this.root.classList.toggle('blocked', this.mode === 'field' && input.blocked), 150);
+    window.setInterval(() => {
+      const hide = this.mode === 'field' && input.blocked;
+      if (hide && !this.root.classList.contains('blocked')) input.releaseTouch();
+      this.root.classList.toggle('blocked', hide);
+    }, 150);
     this.refresh();
   }
 

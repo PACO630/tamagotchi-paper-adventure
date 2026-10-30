@@ -11,6 +11,7 @@ import { needsInstall, showInstallGate } from '../pwa/installGate';
 import { initRotateLock, refreshRotateLock } from '../ui/rotateLock';
 import { BootScene } from '../scenes/bootScene';
 import { TitleScene } from '../scenes/titleScene';
+import { OpeningScene } from '../scenes/openingScene';
 import { audio } from '../systems/audio';
 import { identity } from '../systems/identity';
 import { prefs } from '../systems/localPrefs';
@@ -91,7 +92,7 @@ class App {
       render: { antialias: true, roundPixels: false, powerPreference: 'high-performance' },
       fps: { target: 60, smoothStep: true, forceSetTimeOut: new URLSearchParams(location.search).has('sto') },
       input: { keyboard: false, mouse: true, touch: true },
-      scene: [boot, TitleScene, WorldScene, BattleScene],
+      scene: [boot, TitleScene, WorldScene, BattleScene, OpeningScene],
       banner: false,
     });
     const layout = () => {

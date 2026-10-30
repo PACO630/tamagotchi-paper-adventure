@@ -23,6 +23,7 @@ import { openWelcome } from '../ui/screens/welcome';
 import { touch } from '../ui/touch';
 import { WorldScene } from '../world/worldScene';
 import { FONT_FAMILY, GAME_H, GAME_W } from './config';
+import { isCoarse, isPhone, viewWidth } from './device';
 import { CHAPTERS } from '../data/chapters';
 import { ENEMIES } from '../data/enemies';
 import { wait } from './util';
@@ -74,7 +75,7 @@ class App {
     G.game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: 'game',
-      width: GAME_W,
+      width: viewWidth(),
       height: GAME_H,
       backgroundColor: '#2b1d14',
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
@@ -92,13 +93,17 @@ class App {
       st.setProperty('--gy', `${c.top}px`);
       st.setProperty('--gw', `${c.width}px`);
       st.setProperty('--gh', `${c.height}px`);
-      st.setProperty('--u', `${Math.max(0.45, c.width / GAME_W)}`);
+      st.setProperty('--u', `${Math.max(0.45, c.height / GAME_H)}`);
       document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
+      document.body.classList.toggle('phone', isPhone());
+      document.body.classList.toggle('coarse', isCoarse());
     };
     const orient = () => {
       // portrait: game on top, touch controls in the free space below; landscape: centered
       const portrait = window.innerHeight > window.innerWidth;
       const want = portrait ? Phaser.Scale.CENTER_HORIZONTALLY : Phaser.Scale.CENTER_BOTH;
+      const w = viewWidth();
+      if (G.game.scale.gameSize.width !== w) G.game.scale.setGameSize(w, GAME_H);
       if (G.game.scale.autoCenter !== want) { G.game.scale.autoCenter = want; G.game.scale.refresh(); }
       requestAnimationFrame(layout);
     };

@@ -8,6 +8,7 @@ import type { StatusType } from '../data/types';
 import { input, type Btn } from '../input/input';
 import { audio } from '../systems/audio';
 import { settings } from '../systems/settings';
+import { bus } from '../core/events';
 import { ensureUiIconTexture, type UiIconName } from '../art/uiIcons';
 import type { CommandSpec, Fighter, FxStep, GuardResult, Quality } from './battleTypes';
 
@@ -58,24 +59,26 @@ export class BattleScene extends Phaser.Scene {
     const data = (this as any)._initData as { party: Fighter[]; enemies: Fighter[] };
     const theme = CHAPTERS.find((c) => c.theme.id === this.themeId)?.theme ?? chapterByNum(1).theme;
     ensureTheme(this, theme);
-    this.add.image(0, 0, `sky:${theme.id}`).setOrigin(0).setDisplaySize(GAME_W, GAME_H);
-    this.add.image(0, 130, `far:${theme.id}`).setOrigin(0).setAlpha(0.95);
-    this.add.image(0, 210, `mid:${theme.id}`).setOrigin(0);
-    // stage floor: paper ground with a front lip like a diorama box
-    const ground = this.add.tileSprite(0, 430, GAME_W, 290, `ground:${theme.id}`).setOrigin(0);
-    ground.setTileScale(1, 1);
-    this.add.tileSprite(0, 416, GAME_W, 40, `gedge:${theme.id}`).setOrigin(0);
-    this.add.tileSprite(0, 690, GAME_W, 50, `fedge:${theme.id}`).setOrigin(0);
+    // The stage is laid out in 1280-wide coordinates; on wider (phone) views the camera centres it
+    // and the backdrop layers stretch to cover the extra width.
+    this.stageFill = [this.add.image(0, 0, `sky:${theme.id}`).setOrigin(0)];
+    this.stageTiles = [
+      this.add.tileSprite(0, 130, GAME_W, 360, `far:${theme.id}`).setOrigin(0).setAlpha(0.95),
+      this.add.tileSprite(0, 210, GAME_W, 300, `mid:${theme.id}`).setOrigin(0),
+      // stage floor: paper ground with a front lip like a diorama box
+      this.add.tileSprite(0, 430, GAME_W, 290, `ground:${theme.id}`).setOrigin(0),
+      this.add.tileSprite(0, 416, GAME_W, 40, `gedge:${theme.id}`).setOrigin(0),
+      this.add.tileSprite(0, 690, GAME_W, 50, `fedge:${theme.id}`).setOrigin(0),
+    ];
     // stage curtains made of paper strips (original look: notebook-paper ribbons)
-    const g = this.add.graphics();
-    g.fillStyle(0xfffdf6, 1).fillRect(0, 0, GAME_W, 26);
-    g.fillStyle(0xe85a6a, 1);
-    for (let x = 0; x < GAME_W; x += 64) g.fillTriangle(x, 26, x + 64, 26, x + 32, 52);
-    g.fillStyle(0xffd23a, 1);
-    for (let x = 32; x < GAME_W; x += 64) g.fillCircle(x, 30, 5);
-    this.add.image(GAME_W / 2, GAME_H / 2, 'vignette').setAlpha(0.6);
-    this.add.image(0, 0, 'rays').setOrigin(0).setAlpha(0.5).setBlendMode(Phaser.BlendModes.ADD);
+    this.curtain = this.add.graphics();
+    this.stageFill.push(this.add.image(0, 0, 'vignette').setOrigin(0).setAlpha(0.6));
+    this.stageFill.push(this.add.image(0, 0, 'rays').setOrigin(0).setAlpha(0.5).setBlendMode(Phaser.BlendModes.ADD));
     this.darkOverlay = this.add.rectangle(0, 0, GAME_W, GAME_H, 0x100018, 0).setOrigin(0).setDepth(900);
+    this.stageFill.push(this.darkOverlay);
+    this.layoutStage();
+    this.scale.on('resize', this.layoutStage, this);
+    this.events.once('shutdown', () => this.scale.off('resize', this.layoutStage, this));
 
     data.party.forEach((f, i) => this.addView(f, i));
     data.enemies.forEach((f, i) => this.addView(f, i));
@@ -88,8 +91,28 @@ export class BattleScene extends Phaser.Scene {
     this.bannerText = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '28px', color: '#3a2a1a', align: 'center', wordWrap: { width: 570 } }).setOrigin(0.5);
     this.banner = this.add.container(GAME_W / 2, 92, [bg, this.bannerText]).setDepth(1000).setAlpha(0);
 
+    this.input.on('pointerdown', () => { if (this.tapWanted) input.press('confirm'); });
     this.cameras.main.fadeIn(300);
     this.onReady?.();
+  }
+
+  private stageFill: (Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle)[] = [];
+  private stageTiles: Phaser.GameObjects.TileSprite[] = [];
+  private curtain!: Phaser.GameObjects.Graphics;
+
+  /** Centre the 1280-wide stage in the current view and stretch the backdrop to its edges. */
+  private layoutStage(): void {
+    const w = this.scale.width;
+    const off = (w - GAME_W) / 2;
+    this.cameras.main.setScroll(-off, 0);
+    for (const o of this.stageFill) o.setPosition(-off, 0).setDisplaySize(w, GAME_H);
+    for (const t of this.stageTiles) t.setPosition(-off, t.y).setSize(w, t.height);
+    const g = this.curtain.clear();
+    g.fillStyle(0xfffdf6, 1).fillRect(-off, 0, w, 26);
+    g.fillStyle(0xe85a6a, 1);
+    for (let x = -off - 64; x < w - off; x += 64) g.fillTriangle(x, 26, x + 64, 26, x + 32, 52);
+    g.fillStyle(0xffd23a, 1);
+    for (let x = -off - 32; x < w - off; x += 64) g.fillCircle(x, 30, 5);
   }
 
   private slotFor(f: Fighter, idx: number): [number, number] {
@@ -390,7 +413,7 @@ export class BattleScene extends Phaser.Scene {
       p.explode(name === 'starburst' ? 40 : 18);
       this.time.delayedCall(900, () => p.destroy());
       if (name === 'beam' || name === 'starburst') {
-        const line = this.add.rectangle(GAME_W / 2, y, GAME_W, 18, 0xfff6a0, 0.85).setDepth(1090).setBlendMode(Phaser.BlendModes.ADD);
+        const line = this.add.rectangle(GAME_W / 2, y, this.scale.width, 18, 0xfff6a0, 0.85).setDepth(1090).setBlendMode(Phaser.BlendModes.ADD);
         this.tweens.add({ targets: line, scaleY: 0, alpha: 0, duration: 400, onComplete: () => line.destroy() });
       }
       if (name === 'phase' || name === 'barrier') {
@@ -425,7 +448,23 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /** Runs the acting player's action command and returns its quality / bounce count. */
+  /** Touch devices: a tap anywhere on the stage counts as the confirm button during commands. */
+  private tapWanted = false;
+  private get touchUI(): boolean {
+    return document.body.classList.contains('touch-ui');
+  }
+
   async command(spec: CommandSpec): Promise<Quality | number> {
+    this.tapWanted = true;
+    try {
+      return await this.commandInner(spec);
+    } finally {
+      this.tapWanted = false;
+      bus.emit('touch:dpad', false);
+    }
+  }
+
+  private async commandInner(spec: CommandSpec): Promise<Quality | number> {
     const actor = this.views.get(spec.actor);
     const target = spec.target ? this.views.get(spec.target) : undefined;
     const k = spec.hard ? 0.55 : 1;
@@ -435,7 +474,7 @@ export class BattleScene extends Phaser.Scene {
         const tx = target?.c.x ?? GAME_W / 2, ty = target ? this.headY(target) : 360;
         const inner = this.add.circle(tx, ty, 26, 0xffffff, 0.25).setStrokeStyle(5, 0xffffff).setDepth(1250);
         const ring = this.add.circle(tx, ty, 130, 0x000000, 0).setStrokeStyle(6, 0xffd23a).setDepth(1251);
-        const tip = this.promptText('時機正確時按下 確認！');
+        const tip = this.promptText(this.touchUI ? '光圈縮到最小時，點一下畫面！' : '時機正確時按下 確認！');
         const dur = 900;
         this.tweens.add({ targets: ring, radius: 26, duration: dur, ease: 'Linear' });
         const t = await this.waitPress((b) => b === 'confirm' || b === 'attack' || b === 'jump', dur + 260);
@@ -449,7 +488,7 @@ export class BattleScene extends Phaser.Scene {
         return q;
       }
       case 'mash': {
-        const tip = this.promptText('連打 確認！');
+        const tip = this.promptText(this.touchUI ? '快速連點畫面！' : '連打 確認！');
         const bg = this.add.rectangle(GAME_W / 2, 270, 420, 34, 0xfffdf6).setStrokeStyle(4, 0x3a2a1a).setDepth(1250);
         const bar = this.add.rectangle(GAME_W / 2 - 205, 270, 0, 24, 0xff8a3a).setOrigin(0, 0.5).setDepth(1251);
         let fill = 0;
@@ -469,7 +508,8 @@ export class BattleScene extends Phaser.Scene {
 
         const n = spec.len ?? 4;
         const seq = Array.from({ length: n }, () => dirs[Math.floor(Math.random() * 4)]);
-        const tip = this.promptText('依序按下方向鍵！');
+        const tip = this.promptText(this.touchUI ? '依序點下方的方向鍵！' : '依序按下方向鍵！');
+        bus.emit('touch:dpad', true);
         const items = seq.map((d, i) => this.add.image(GAME_W / 2 + (i - (n - 1) / 2) * 76, 280, ensureUiIconTexture(this, d as UiIconName)).setDisplaySize(64, 64).setDepth(1250));
         let idx = 0, correct = 0;
         const total = (spec.hard ? 2200 : 3400) + n * 150;
@@ -488,6 +528,7 @@ export class BattleScene extends Phaser.Scene {
         });
         await this.delay(200);
         this.tweens.killTweensOf(timer);
+        bus.emit('touch:dpad', false);
         tip.destroy(); timer.destroy(); items.forEach((t) => t.destroy());
         const q: Quality = correct === n ? 'great' : correct >= Math.ceil(n / 2) ? 'nice' : 'ok';
         audio.sfx(q === 'great' ? 'perfect' : 'confirm');
@@ -495,7 +536,7 @@ export class BattleScene extends Phaser.Scene {
       }
       case 'jump': {
         // press right as the character lands on the enemy's head
-        const tip = this.promptText('落地瞬間按下 確認 再踩一次！');
+        const tip = this.promptText(this.touchUI ? '落地瞬間點畫面，再踩一次！' : '落地瞬間按下 確認 再踩一次！');
         let bounces = 1;
         const cap = spec.hits ?? 2;
         for (let i = 1; i < cap; i++) {
@@ -514,13 +555,22 @@ export class BattleScene extends Phaser.Scene {
 
   /** Guard command for the targeted local player. */
   async guard(spec: { attacker: string; target: string; hard: boolean; badges: string[] }): Promise<GuardResult> {
+    this.tapWanted = true;
+    try {
+      return await this.guardInner(spec);
+    } finally {
+      this.tapWanted = false;
+    }
+  }
+
+  private async guardInner(spec: { attacker: string; target: string; hard: boolean; badges: string[] }): Promise<GuardResult> {
     const att = this.views.get(spec.attacker);
     const tgt = this.views.get(spec.target);
     if (!att || !tgt) return 'fail';
     const plus = spec.badges.includes('b_perfect') ? 1.5 : 1;
     const k = (spec.hard ? 0.6 : 1) * plus;
     const mark = this.add.text(tgt.c.x, this.headY(tgt) - 40, '!', { fontFamily: FONT, fontSize: '48px', color: '#ffd23a', stroke: '#2a1a0a', strokeThickness: 8 }).setOrigin(0.5).setDepth(1300);
-    const tip = this.promptText('敵人攻擊時按下 確認 防禦！', 170);
+    const tip = this.promptText(this.touchUI ? '敵人衝過來時點畫面防禦！' : '敵人攻擊時按下 確認 防禦！', 170);
     const windup = 520 + Math.random() * 500; // unpredictable lunge timing
     att.spr.stop();
     att.spr.setFrame('attack');

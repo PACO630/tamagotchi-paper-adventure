@@ -72,6 +72,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private animatedTiles: { t: Phaser.GameObjects.TileSprite; vx: number; vy: number }[] = [];
   private spinners: { o: Phaser.GameObjects.Image; v: number }[] = [];
   private triggerCheckT = 0;
+  private screenFill: (Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle)[] = [];
+  private screenTiles: Phaser.GameObjects.TileSprite[] = [];
   private lastHp = -1;
 
   constructor() {
@@ -88,6 +90,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       releaseNpcSheets(this);
     }
     ensureTheme(this, cd.theme);
+    this.screenFill = []; this.screenTiles = [];
     this.npcs = []; this.enemies = []; this.objects = []; this.chests = []; this.plats = []; this.hazards = [];
     this.remotes.clear(); this.pitWater = []; this.animatedTiles = []; this.spinners = []; this.trail = [];
     this.busy = false;
@@ -118,10 +121,13 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
 
     // overlays (screen space)
     this.darkMask = this.add.image(GAME_W / 2, GAME_H / 2, this.darkTexture()).setScrollFactor(0).setDepth(8000).setAlpha(0);
-    this.add.image(GAME_W / 2, GAME_H / 2, 'vignette').setScrollFactor(0).setDepth(8100).setAlpha(0.55);
-    if (cd.theme.sun === 'sun' || cd.theme.underwater) this.add.image(0, 0, 'rays').setOrigin(0).setScrollFactor(0).setDepth(8050).setBlendMode(Phaser.BlendModes.ADD).setAlpha(cd.theme.underwater ? 0.6 : 0.4);
-    const tint = this.add.rectangle(0, 0, GAME_W, GAME_H, cd.theme.ambient, 0.06).setOrigin(0).setScrollFactor(0).setDepth(8020).setBlendMode(Phaser.BlendModes.MULTIPLY);
-    void tint;
+    this.screenFill.push(this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(8100).setAlpha(0.55));
+    if (cd.theme.sun === 'sun' || cd.theme.underwater) this.screenFill.push(this.add.image(0, 0, 'rays').setOrigin(0).setScrollFactor(0).setDepth(8050).setBlendMode(Phaser.BlendModes.ADD).setAlpha(cd.theme.underwater ? 0.6 : 0.4));
+    this.screenFill.push(this.add.rectangle(0, 0, GAME_W, GAME_H, cd.theme.ambient, 0.06).setOrigin(0).setScrollFactor(0).setDepth(8020).setBlendMode(Phaser.BlendModes.MULTIPLY));
+    // phones/tablets: the view is wider than 1280 — stretch screen-space layers to the real width
+    this.fitScreen();
+    this.scale.on('resize', this.fitScreen, this);
+    this.events.once('shutdown', () => this.scale.off('resize', this.fitScreen, this));
     this.buildWeather();
 
     this.interactBubble = this.add.image(0, 0, 'emote_bubble').setDepth(9500).setVisible(false).setScale(0.8);
@@ -170,7 +176,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private buildBackdrop(): void {
     const cd = this.chapter;
     const t = cd.theme;
-    this.add.image(0, 0, `sky:${t.id}`).setOrigin(0).setScrollFactor(0).setDepth(-100).setDisplaySize(GAME_W, GAME_H);
+    this.screenFill.push(this.add.image(0, 0, `sky:${t.id}`).setOrigin(0).setScrollFactor(0).setDepth(-100).setDisplaySize(GAME_W, GAME_H));
     // drifting paper clouds in the sky
     if (!t.underwater && t.id !== 'dark') {
       for (let i = 0; i < 5; i++) {
@@ -180,6 +186,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     }
     const far = this.add.tileSprite(0, 150, GAME_W, 360, `far:${t.id}`).setOrigin(0).setScrollFactor(0).setDepth(-90);
     const mid = this.add.tileSprite(0, GROUND_TOP - 280, GAME_W, 300, `mid:${t.id}`).setOrigin(0).setScrollFactor(0).setDepth(-80);
+    this.screenTiles.push(far, mid);
     this.events.on('update', () => {
       const sx = this.cameras.main.scrollX;
       far.tilePositionX = sx * 0.12;
@@ -468,8 +475,15 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     if (!m) return;
     const rising = m.cfg.speedY && typeof m.cfg.speedY === 'object' && m.cfg.speedY.max < 0;
     this.weather = this.add.particles(0, 0, m.tex, {
-      x: { min: -100, max: GAME_W + 100 }, y: rising ? GAME_H + 10 : -20, lifespan: 9000, quantity: 1, ...m.cfg,
+      x: { min: -100, max: this.scale.width + 100 }, y: rising ? GAME_H + 10 : -20, lifespan: 9000, quantity: 1, ...m.cfg,
     }).setScrollFactor(0).setDepth(7900);
+  }
+
+  /** Stretch screen-space layers (sky, parallax, vignette, light) to the current view width. */
+  private fitScreen(): void {
+    const w = this.scale.width;
+    for (const o of this.screenFill) o.setDisplaySize(w, GAME_H);
+    for (const t of this.screenTiles) t.setSize(w, t.height);
   }
 
   private darkTexture(): string {

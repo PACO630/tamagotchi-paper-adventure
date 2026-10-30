@@ -11,21 +11,28 @@ export class TitleScene extends Phaser.Scene {
   private far!: Phaser.GameObjects.TileSprite;
   private mid!: Phaser.GameObjects.TileSprite;
   private ground!: Phaser.GameObjects.TileSprite;
+  private edge!: Phaser.GameObjects.TileSprite;
+  private sky!: Phaser.GameObjects.Image;
+  private vignette!: Phaser.GameObjects.Image;
+  private props: { img: Phaser.GameObjects.Image; x: number }[] = [];
 
   constructor() {
     super('Title');
   }
 
   create(): void {
+    this.actors = [];
+    this.props = [];
     const t = { ...ch1.theme, skyTop: 0x7ab8ff, skyBottom: 0xffe6c0, sun: 'sun' as const, id: 'title' };
     ensureTheme(this, t);
-    this.add.image(0, 0, `sky:${t.id}`).setOrigin(0).setDisplaySize(GAME_W, GAME_H);
+    this.sky = this.add.image(0, 0, `sky:${t.id}`).setOrigin(0);
     this.far = this.add.tileSprite(0, 150, GAME_W, 360, `far:${t.id}`).setOrigin(0);
     this.mid = this.add.tileSprite(0, GROUND_TOP - 280, GAME_W, 300, `mid:${t.id}`).setOrigin(0);
     this.ground = this.add.tileSprite(0, GROUND_TOP - 4, GAME_W, 300, `ground:${t.id}`).setOrigin(0);
-    this.add.tileSprite(0, GROUND_TOP - 28, GAME_W, 40, `gedge:${t.id}`).setOrigin(0);
+    this.edge = this.add.tileSprite(0, GROUND_TOP - 28, GAME_W, 40, `gedge:${t.id}`).setOrigin(0);
     for (const [k, x, s] of [['house', 140, 0.8], ['tree_round', 1120, 0.9], ['flower', 300, 1], ['flower_y', 980, 1]] as [string, number, number][]) {
-      this.add.image(x, GROUND_TOP + 30, ensureProp(this, k)).setOrigin(0.5, 1).setScale(s).setDepth(GROUND_TOP);
+      const img = this.add.image(x, GROUND_TOP + 30, ensureProp(this, k)).setOrigin(0.5, 1).setScale(s).setDepth(GROUND_TOP);
+      this.props.push({ img, x });
     }
     for (let i = 0; i < 6; i++) {
       const c = this.add.image(Math.random() * GAME_W, 50 + Math.random() * 150, 'p_cloud').setAlpha(0.85).setScale(0.8 + Math.random() * 0.8);
@@ -35,9 +42,21 @@ export class TitleScene extends Phaser.Scene {
       const a = new Actor(this, { charId: id }, 120 + i * 140, 90 + (i % 3) * 50, 0.9);
       this.actors.push({ a, v: (i % 2 ? -1 : 1) * (40 + Math.random() * 40), jumpT: Math.random() * 3 });
     });
-    this.add.particles(0, 0, 'p_petal', { x: { min: 0, max: GAME_W }, y: -10, speedY: { min: 30, max: 60 }, speedX: { min: -30, max: 10 }, rotate: { min: 0, max: 360 }, lifespan: 12000, frequency: 400 });
-    this.add.image(GAME_W / 2, GAME_H / 2, 'vignette').setAlpha(0.5).setDepth(5000);
+    this.add.particles(0, 0, 'p_petal', { x: { min: 0, max: 1900 }, y: -10, speedY: { min: 30, max: 60 }, speedX: { min: -30, max: 10 }, rotate: { min: 0, max: 360 }, lifespan: 12000, frequency: 400 });
+    this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setAlpha(0.5).setDepth(5000);
+    this.layout();
+    this.scale.on('resize', this.layout, this);
+    this.events.once('shutdown', () => this.scale.off('resize', this.layout, this));
     this.cameras.main.fadeIn(600);
+  }
+
+  /** Fill the current view width (wider on phones). */
+  private layout(): void {
+    const w = this.scale.width;
+    this.sky.setDisplaySize(w, GAME_H);
+    this.vignette.setDisplaySize(w, GAME_H);
+    for (const t of [this.far, this.mid, this.ground, this.edge]) t.setSize(w, t.height);
+    for (const p of this.props) p.img.x = (p.x / GAME_W) * w;
   }
 
   update(_t: number, dms: number): void {
@@ -47,7 +66,7 @@ export class TitleScene extends Phaser.Scene {
     for (const o of this.actors) {
       const a = o.a;
       a.x += o.v * dt;
-      if (a.x < 60 || a.x > GAME_W - 60) o.v = -o.v;
+      if (a.x < 60 || a.x > this.scale.width - 60) o.v = -o.v;
       a.face(Math.sign(o.v), 0);
       o.jumpT -= dt;
       if (o.jumpT <= 0 && a.y <= 0) { a.vy = 420; o.jumpT = 2 + Math.random() * 4; a.spin(); }

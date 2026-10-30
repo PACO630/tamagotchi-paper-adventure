@@ -358,28 +358,6 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 .credits-roll .credit b { color: var(--accent-2); }
 @keyframes roll { from { transform: translateY(70%); } to { transform: translateY(-110%); } }
 
-/* ---------- touch controls ---------- */
-.stick-zone { position: absolute; left: 0; bottom: 0; width: 42%; height: 55%; pointer-events: auto; touch-action: none; }
-.stick-base { position: absolute; left: max(4%, env(safe-area-inset-left)); bottom: 12%; width: 128px; height: 128px; border-radius: 50%; background: rgba(255, 253, 246, .35); border: 4px solid rgba(58, 42, 26, .6); }
-.stick-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px; border-radius: 50%; background: var(--paper); border: 4px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
-.tbtns { position: absolute; right: max(3%, env(safe-area-inset-right)); bottom: 8%; width: 210px; height: 210px; pointer-events: none; }
-.tbtn { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; touch-action: none; border-radius: 50%; border: 4px solid var(--ink); background: rgba(255, 253, 246, .88); font-weight: 900; box-shadow: 0 4px 0 var(--ink); color: var(--ink); }
-.tbtn.down { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); background: var(--accent-2); }
-.tbtn b { font-size: 22px; line-height: 1; }
-.tbtn small { font-size: 10px; }
-.t-jump { right: 0; bottom: 40px; width: 82px; height: 82px; background: rgba(255, 210, 58, .92); }
-.t-attack { right: 92px; bottom: 0; width: 72px; height: 72px; background: rgba(255, 138, 196, .92); }
-.t-ok { right: 96px; bottom: 96px; width: 60px; height: 60px; }
-.t-item { right: 10px; bottom: 136px; width: 56px; height: 56px; }
-.t-back { position: absolute; right: max(2%, env(safe-area-inset-right)); top: 2%; width: 54px; height: 54px; }
-.tdpad { position: absolute; left: max(3%, env(safe-area-inset-left)); bottom: 10%; width: 170px; height: 170px; display: none; pointer-events: none; }
-.tdpad .tbtn { width: 56px; height: 56px; border-radius: 14px; }
-.t-up { left: 57px; top: 0; } .t-down { left: 57px; bottom: 0; } .t-left { left: 0; top: 57px; } .t-right { right: 0; top: 57px; }
-#touch[data-mode="battle"] .stick-zone { display: none; }
-#touch[data-mode="battle"] .tdpad { display: block; }
-body.touch-ui .hud-quick { bottom: auto; top: calc(var(--gh) * .02 + 4.5em); left: auto; right: auto; transform: none; position: absolute; left: .5em; flex-direction: column; top: auto; bottom: 30%; }
-body.touch-ui .b-menu { right: auto; left: 50%; transform: translateX(-50%); bottom: auto; top: .5em; }
-body.touch-ui .b-party { right: 230px; }
 
 /* portrait: game on top, controls in the free space below */
 body.portrait #game { align-items: flex-start; padding-top: max(10px, env(safe-area-inset-top)); }
@@ -387,16 +365,9 @@ body.portrait .hud-quest-desc, body.portrait .hud-map, body.portrait .hud-quick 
 body.portrait .hud-card { width: 11em; }
 body.portrait .hud-card:nth-child(2) { display: none; }
 body.dlg-open .hud-quick { display: none; }
-body.portrait .stick-zone { height: 40%; width: 50%; }
-body.portrait .stick-base { bottom: 8%; }
-body.portrait .tbtns { bottom: 5%; }
-.rotate-hint { display: none; }
-body.portrait.touch-ui .rotate-hint { display: block; position: fixed; top: calc(var(--gy) + var(--gh) + 8px); left: 50%; transform: translateX(-50%); background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: .3em .8em; font-weight: 800; z-index: 61; font-size: 13px; white-space: nowrap; }
 
 /* small screens (phones in landscape) */
 @media (max-height: 460px) {
-  .tbtns { transform: scale(.82); transform-origin: right bottom; }
-  .stick-base { transform: scale(.85); transform-origin: left bottom; }
   .paper-card { padding: .6em .9em; }
   .main-menu { grid-template-columns: repeat(3, minmax(7em, 11em)); }
   .logo-main { font-size: 2.4em; }
@@ -409,9 +380,7 @@ body.portrait.touch-ui .rotate-hint { display: block; position: fixed; top: calc
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
-body.portrait .t-back { top: calc(var(--gy) + var(--gh) + 56px); }
 /* in the field the HUD already has a ☰ button; the touch copy is only needed in battle */
-#touch[data-mode="field"] .t-back { display: none; }
 
 /* ---------- doodle icons (no emoji) ---------- */
 .ico { width: 1.35em; height: 1.35em; vertical-align: -0.32em; image-rendering: pixelated; flex: none; pointer-events: none; }
@@ -428,11 +397,6 @@ body.portrait .t-back { top: calc(var(--gy) + var(--gh) + 56px); }
 .dlg-skip .ico, .ending-skip .ico { width: 1.2em; height: 1.2em; }
 .b-opt-label { display: inline-flex; align-items: center; gap: .35em; }
 .b-opt .ico.tag { width: 1.2em; height: 1.2em; }
-.tbtn .ico { width: 30px; height: 30px; }
-.tdpad .tbtn .ico { width: 28px; height: 28px; }
-.rotate-hint { display: none; align-items: center; gap: .3em; }
-body.portrait.touch-ui .rotate-hint { display: flex; }
-.rotate-hint .ico { width: 18px; height: 18px; }
 .shard-dot .ico { width: 1.1em; height: 1.1em; }
 .shard-dot:not(.got) .ico { filter: grayscale(1) opacity(.35); }
 .quest-row .tag .ico { width: 1em; height: 1em; vertical-align: -0.15em; }
@@ -490,3 +454,91 @@ body.portrait.touch-ui .rotate-hint { display: flex; }
 .toast-warn { background: #e8784a; }
 .toast-quest { background: #d86ab0; }
 .toast-save { background: #f0b83a; }
+
+/* =====================================================================
+   Touch controls (phones / tablets) — kept small, translucent and in the
+   corners so they don't cover the game; desktop never shows them.
+   ===================================================================== */
+.stick-zone { position: absolute; left: 0; bottom: 0; width: 42%; height: 62%; pointer-events: auto; touch-action: none; }
+.stick-base {
+  position: absolute; left: max(5%, env(safe-area-inset-left)); bottom: 10%; width: 104px; height: 104px; border-radius: 50%;
+  background: rgba(255, 253, 246, .16); border: 3px dashed rgba(255, 253, 246, .6); opacity: .55; transition: opacity .15s;
+}
+.stick-zone.active .stick-base { opacity: 1; background: rgba(255, 253, 246, .28); border: 3px solid rgba(58, 42, 26, .55); }
+.stick-knob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: rgba(255, 253, 246, .85); border: 3px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
+.tbtns { position: absolute; right: max(2.5%, env(safe-area-inset-right)); bottom: 6%; width: 170px; height: 150px; pointer-events: none; }
+.tbtn {
+  position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; touch-action: none;
+  border-radius: 50%; border: 3px solid rgba(42, 26, 10, .75); background: rgba(255, 253, 246, .5); box-shadow: 0 3px 0 rgba(42, 26, 10, .6); opacity: .85;
+}
+.tbtn.down { transform: translateY(2px); box-shadow: 0 1px 0 rgba(42, 26, 10, .6); background: rgba(255, 210, 58, .9); opacity: 1; }
+.tbtn b { font-size: 19px; line-height: 1; color: #fff; text-shadow: var(--ol-s); font-weight: 600; }
+.tbtn small { font-size: 9px; color: #fff; text-shadow: var(--ol-s); }
+.tbtn .ico { width: 26px; height: 26px; }
+.t-jump { right: 0; bottom: 24px; width: 68px; height: 68px; background: rgba(255, 210, 58, .55); }
+.t-attack { right: 78px; bottom: 0; width: 58px; height: 58px; background: rgba(255, 138, 196, .55); }
+.t-ok { right: 84px; bottom: 70px; width: 48px; height: 48px; }
+.tdpad { position: absolute; right: max(3%, env(safe-area-inset-right)); bottom: 8%; width: 156px; height: 156px; display: none; pointer-events: none; }
+.tdpad .tbtn { width: 52px; height: 52px; border-radius: 14px; background: rgba(255, 253, 246, .85); opacity: 1; }
+.t-up { left: 52px; top: 0; } .t-down { left: 52px; bottom: 0; } .t-left { left: 0; top: 52px; } .t-right { right: 0; top: 52px; }
+/* battle: no permanent buttons (tap menus / tap the stage); the pad appears only for arrow sequences */
+#touch[data-mode="battle"] .stick-zone, #touch[data-mode="battle"] .tbtns { display: none; }
+#touch.dpad-on .tdpad { display: block; }
+/* dialogue / menus open: controls step aside */
+#touch.blocked .stick-zone, #touch.blocked .tbtns { visibility: hidden; pointer-events: none; }
+.rotate-hint { display: none; align-items: center; gap: .3em; }
+.rotate-hint .ico { width: 18px; height: 18px; }
+
+/* item quick bar moves to the top centre on touch screens (out of the thumbs' way) */
+body.touch-ui .hud-quick { top: .5em; bottom: auto; }
+
+/* portrait: game on top, controls and panels in the free space below */
+body.portrait.touch-ui .stick-zone { top: calc(var(--gy) + var(--gh) + 44px); height: auto; bottom: 0; width: 55%; }
+body.portrait.touch-ui .stick-base { bottom: 20%; left: 14%; width: 124px; height: 124px; }
+body.portrait.touch-ui .tbtns { bottom: 12%; right: 6%; transform: scale(1.2); transform-origin: right bottom; }
+body.portrait.touch-ui .tdpad { bottom: 32%; right: auto; left: 50%; transform: translateX(-50%) scale(1.1); }
+body.portrait.touch-ui .rotate-hint {
+  display: flex; position: fixed; top: calc(var(--gy) + var(--gh) + 8px); left: 50%; transform: translateX(-50%);
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: .3em .8em; z-index: 61; font-size: 13px; white-space: nowrap;
+}
+body.portrait.touch-ui .hud-quick { display: flex; }
+
+/* =====================================================================
+   Phones: bigger text and UI (desktop unaffected)
+   ===================================================================== */
+body.phone #ui, body.phone #fx-overlay, body.phone #toasts { --fs: clamp(13px, 3.7vmin, 17px); }
+/* portrait phones: panels, dialogue, menus and the battle UI use the whole screen, not just the small game strip */
+body.phone.portrait #ui, body.phone.portrait #fx-overlay { left: 0; top: 0; width: 100vw; height: 100vh; height: 100dvh; }
+body.phone .hud-left { left: max(.5em, env(safe-area-inset-left)); }
+body.phone .hud-right { right: max(.5em, env(safe-area-inset-right)); width: 16em; max-width: 48%; }
+body.phone .hud-card { width: 12.5em; }
+body.phone .hud-quest-desc { display: none; }
+body.phone .hud-map { height: 1.4em; }
+body.phone .quick-slot { width: 2.8em; height: 2.8em; }
+body.phone .dlg-port-wrap { width: 5em; height: 5em; margin-top: -2em; }
+body.phone .dialogue { padding: 0 max(2%, env(safe-area-inset-right)) 2% max(2%, env(safe-area-inset-left)); }
+body.phone .dlg-box { min-height: 6.2em; padding: .7em 1em .9em; }
+body.phone .dlg-text { font-size: 1.1em; line-height: 1.5; min-height: 2.8em; }
+body.phone .paper-card { padding: .7em 1em; max-height: 94%; }
+body.phone .paper-card.wide { width: 96%; }
+body.phone .b-party { left: max(.5em, env(safe-area-inset-left)); }
+body.phone .b-menu { right: max(.5em, env(safe-area-inset-right)); }
+body.phone .b-card { width: 11.5em; }
+body.phone .b-cmd { width: 14em; }
+body.phone .b-opt { padding: .38em .5em; }
+body.phone .toast { font-size: 1em; }
+body.phone .btn { min-height: 2.6em; }
+body.phone.portrait .main-menu { grid-template-columns: repeat(2, minmax(8em, 1fr)); }
+body.phone.portrait .logo-main { font-size: 2.2em; }
+/* phones: two-column battle menu so every command fits on a short landscape screen */
+body.phone .b-cmd { display: grid; grid-template-columns: 1fr 1fr; width: 21em; max-height: calc(var(--gh) * .7); }
+body.phone .b-cmd-title, body.phone .b-hint, body.phone .b-opt.back { grid-column: 1 / -1; }
+body.phone .b-hint { min-height: 0; }
+body.phone.portrait .b-cmd { width: min(24em, 92vw); }
+body.phone:not(.portrait) .b-menu { top: .5em; bottom: auto; }
+/* portrait phones: HUD sits in the free area under the game instead of on top of it */
+body.phone.portrait .hud-left { top: calc(var(--gy) + var(--gh) + 48px); }
+body.phone.portrait .hud-right { top: calc(var(--gy) + var(--gh) + 48px); width: 50%; max-width: 50%; }
+body.phone.portrait .hud-top-right { flex-wrap: wrap; justify-content: flex-end; }
+body.phone.portrait .hud-quick { top: calc(var(--gy) + var(--gh) + 175px); left: .5em; transform: none; }
+body.phone.portrait.touch-ui .stick-zone { top: calc(var(--gy) + var(--gh) + 240px); }

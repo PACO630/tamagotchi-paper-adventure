@@ -1,4 +1,10 @@
-/** Dedicated touch controls: virtual joystick + action buttons, laid out for landscape and portrait. */
+/**
+ * Touch controls designed not to cover the game:
+ *  - field: a floating joystick (appears where the left thumb touches) + three small translucent
+ *    buttons in the bottom-right corner; everything hides while dialogue or menus are open
+ *  - battle: no permanent buttons — menus are tapped directly, timing commands are a tap on the
+ *    screen, and a direction pad appears only for arrow-sequence commands
+ */
 import { bus } from '../core/events';
 import { isTouchDevice } from '../core/util';
 import { input, type Btn } from '../input/input';
@@ -10,7 +16,9 @@ class TouchControls {
   private root!: HTMLElement;
   private knob!: HTMLElement;
   private base!: HTMLElement;
+  private zone!: HTMLElement;
   private active = false;
+  private mode: 'field' | 'battle' = 'field';
   private stickId: number | null = null;
   private center = { x: 0, y: 0 };
   private dirHeld: Btn | null = null;
@@ -19,9 +27,9 @@ class TouchControls {
     this.root = $('#touch');
     this.knob = h('div', { class: 'stick-knob' });
     this.base = h('div', { class: 'stick-base' }, this.knob);
-    const stickZone = h('div', { class: 'stick-zone' }, this.base);
+    this.zone = h('div', { class: 'stick-zone' }, this.base);
     const mk = (cls: string, label: string, b: Btn, sub?: string) => {
-      const el = h('div', { class: `tbtn ${cls}`, role: 'button', 'aria-label': label }, h('b', {}, ...iconLabel(label)), sub ? h('small', {}, sub) : null);
+      const el = h('div', { class: `tbtn ${cls}`, role: 'button', 'aria-label': sub ?? label }, h('b', {}, ...iconLabel(label)), sub ? h('small', {}, sub) : null);
       el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('down'); input.touchDown(b); if (navigator.vibrate) navigator.vibrate(8); });
       const up = () => { el.classList.remove('down'); input.touchUp(b); };
       el.addEventListener('pointerup', up);
@@ -32,38 +40,49 @@ class TouchControls {
     const buttons = h('div', { class: 'tbtns' },
       mk('t-jump', 'A', 'jump', '跳躍'),
       mk('t-attack', 'B', 'attack', '攻擊'),
-      mk('t-ok', 'OK', 'confirm', '確認'),
-      mk('t-item', '[bag]', 'item', '道具'));
-    const back = mk('t-back', '[menu]', 'cancel', '選單/返回');
+      mk('t-ok', 'OK', 'confirm', '調查'));
     const dpad = h('div', { class: 'tdpad' }, mk('t-up', '[up]', 'up'), mk('t-left', '[left]', 'left'), mk('t-right', '[right]', 'right'), mk('t-down', '[down]', 'down'));
-    this.root.append(stickZone, buttons, back, dpad, h('div', { class: 'rotate-hint' }, uiIcon('phone'), '建議將手機轉為橫向遊玩'));
+    this.root.append(this.zone, buttons, dpad, h('div', { class: 'rotate-hint' }, uiIcon('phone'), '建議將手機轉為橫向遊玩'));
 
-    stickZone.addEventListener('pointerdown', (e) => {
+    this.zone.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       this.stickId = e.pointerId;
-      stickZone.setPointerCapture(e.pointerId);
-      const r = this.base.getBoundingClientRect();
-      this.center = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      this.zone.setPointerCapture(e.pointerId);
+      // floating stick: centre it under the thumb
+      const zr = this.zone.getBoundingClientRect();
+      const half = this.base.offsetWidth / 2;
+      const cx = Math.min(Math.max(e.clientX, zr.left + half), zr.right - half);
+      const cy = Math.min(Math.max(e.clientY, zr.top + half), zr.bottom - half);
+      this.base.style.left = `${cx - zr.left - half}px`;
+      this.base.style.top = `${cy - zr.top - half}px`;
+      this.base.style.bottom = 'auto';
+      this.zone.classList.add('active');
+      this.center = { x: cx, y: cy };
       this.move(e.clientX, e.clientY);
     });
-    stickZone.addEventListener('pointermove', (e) => { if (e.pointerId === this.stickId) this.move(e.clientX, e.clientY); });
+    this.zone.addEventListener('pointermove', (e) => { if (e.pointerId === this.stickId) this.move(e.clientX, e.clientY); });
     const end = (e: PointerEvent) => {
       if (e.pointerId !== this.stickId) return;
       this.stickId = null;
       input.stick.x = input.stick.y = 0;
       this.knob.style.transform = '';
+      this.base.style.left = this.base.style.top = this.base.style.bottom = '';
+      this.zone.classList.remove('active');
       if (this.dirHeld) { input.touchUp(this.dirHeld); this.dirHeld = null; }
     };
-    stickZone.addEventListener('pointerup', end);
-    stickZone.addEventListener('pointercancel', end);
+    this.zone.addEventListener('pointerup', end);
+    this.zone.addEventListener('pointercancel', end);
 
     bus.on('settings:changed', () => this.refresh());
+    bus.on('touch:dpad', (on: boolean) => this.root.classList.toggle('dpad-on', !!on));
     window.addEventListener('resize', () => this.refresh());
+    // hide field controls while dialogue / menus are open so they never cover them
+    window.setInterval(() => this.root.classList.toggle('blocked', this.mode === 'field' && input.blocked), 150);
     this.refresh();
   }
 
   private move(x: number, y: number): void {
-    const max = 52;
+    const max = 46;
     let dx = x - this.center.x, dy = y - this.center.y;
     const len = Math.hypot(dx, dy);
     if (len > max) { dx = (dx / len) * max; dy = (dy / len) * max; }
@@ -71,7 +90,7 @@ class TouchControls {
     const nx = dx / max, ny = dy / max;
     input.stick.x = Math.abs(nx) < 0.15 ? 0 : nx;
     input.stick.y = Math.abs(ny) < 0.15 ? 0 : ny;
-    // digital direction for menus / sequences
+    // digital direction for menus
     let dir: Btn | null = null;
     if (Math.hypot(nx, ny) > 0.6) dir = Math.abs(nx) > Math.abs(ny) ? (nx > 0 ? 'right' : 'left') : (ny > 0 ? 'down' : 'up');
     if (dir !== this.dirHeld) {
@@ -83,7 +102,9 @@ class TouchControls {
 
   setActive(on: boolean, mode: 'field' | 'battle' = 'field'): void {
     this.active = on;
+    this.mode = mode;
     this.root.dataset.mode = mode;
+    if (mode === 'field') this.root.classList.remove('dpad-on');
     this.refresh();
   }
 

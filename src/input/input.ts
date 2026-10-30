@@ -96,7 +96,7 @@ class Input {
   unblock(reason: string): void { this.blockers.delete(reason); }
   get blocked(): boolean { return this.blockers.size > 0; }
   isBlockedBy(reason: string): boolean { return this.blockers.has(reason); }
-  clearBlockers(): void { this.blockers.clear(); }
+  clearBlockers(): void { for (const b of [...this.blockers]) if (b !== 'rotate') this.blockers.delete(b); }
 }
 
 export const input = new Input();

@@ -542,3 +542,38 @@ body.phone.portrait .hud-right { top: calc(var(--gy) + var(--gh) + 48px); width:
 body.phone.portrait .hud-top-right { flex-wrap: wrap; justify-content: flex-end; }
 body.phone.portrait .hud-quick { top: calc(var(--gy) + var(--gh) + 175px); left: .5em; transform: none; }
 body.phone.portrait.touch-ui .stick-zone { top: calc(var(--gy) + var(--gh) + 240px); }
+
+/* =====================================================================
+   Phone install gate (browser → home-screen web app) and landscape lock
+   ===================================================================== */
+.install-gate {
+  position: fixed; inset: 0; z-index: 200; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  display: flex; align-items: flex-start; justify-content: center; padding: max(16px, env(safe-area-inset-top)) 16px 24px;
+  background: repeating-linear-gradient(0deg, #fff7e0 0 31px, #e9dcc0 31px 32px); font-family: var(--font); font-size: 15px; color: var(--ink);
+  touch-action: pan-y; user-select: none;
+}
+.ig-card { width: min(560px, 100%); max-height: none; max-width: 100%; text-align: center; margin: 12px 0; }
+.ig-mascot { width: 96px; height: 96px; image-rendering: pixelated; animation: bob 2s ease-in-out infinite; }
+.ig-card h1 { font-size: 1.5em; margin: .2em 0 .4em; color: #fff; text-shadow: var(--ol); font-weight: 500; }
+.ig-lead { margin: 0 0 .8em; line-height: 1.6; }
+.ig-action { display: flex; justify-content: center; margin: .4em 0 .8em; }
+.ig-install { font-size: 1.15em; }
+.ig-done { display: flex; align-items: center; gap: .4em; background: #e6ffe0; border: 3px solid var(--ink); border-radius: 12px; padding: .5em .8em; text-align: left; }
+.ig-done .ico { width: 28px; height: 28px; }
+.ig-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .55em; text-align: left; }
+.ig-step { display: flex; align-items: center; gap: .55em; background: #fff; border: 3px solid var(--ink); border-radius: 14px; padding: .5em .7em; box-shadow: 0 3px 0 rgba(58, 42, 26, .25); }
+.ig-step .ico { width: 34px; height: 34px; flex: none; }
+.ig-num { flex: none; width: 1.7em; height: 1.7em; border-radius: 50%; background: var(--accent); border: 2px solid var(--ink); display: inline-flex; align-items: center; justify-content: center; color: #fff; text-shadow: var(--ol-s); }
+.ig-text { line-height: 1.5; }
+.ig-text b { color: #d0562a; font-weight: 700; }
+.ig-note { margin: .9em 0 0; font-size: .85em; color: var(--ink-soft); line-height: 1.6; text-align: left; }
+
+.rotate-lock {
+  position: fixed; inset: 0; z-index: 190; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  background: repeating-linear-gradient(0deg, #fff7e0 0 31px, #e9dcc0 31px 32px); font-family: var(--font); text-align: center; padding: 24px;
+}
+.rotate-lock.show { display: flex; }
+.rotate-lock .rl-icon { width: 120px; height: 120px; animation: rl-turn 2.2s ease-in-out infinite; }
+.rl-title { font-size: 26px; color: #fff; text-shadow: var(--ol); font-weight: 500; }
+.rl-sub { font-size: 15px; color: var(--ink); }
+@keyframes rl-turn { 0%, 30% { transform: rotate(0); } 60%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }

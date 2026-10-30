@@ -30,6 +30,11 @@ npm run preview    # 預覽正式建置（含 Service Worker）
 - `art-preview.html`：開發用的角色／敵人／場景畫廊（`npm run dev` 後開啟 `/art-preview.html`）。
 - `?profile=b`：使用另一組本地身分與存檔，方便在同一台電腦開兩個分頁測試多人模式。
 - `?sto=1`：遊戲迴圈改用 setTimeout（背景分頁自動化測試用）。
+- `?nopwa=1`：在手機瀏覽器略過「請安裝成網頁 App」頁面（僅供測試）。
+
+## 手機
+
+手機用瀏覽器開啟時會顯示安裝教學（iPhone：分享 → 加入主畫面；Android：安裝按鈕或選單 → 安裝應用程式），必須從主畫面開啟網頁 App 才能遊玩。遊戲只能橫向遊玩，直拿時會暫停並提示轉向。
 
 ## 部署到 GitHub Pages
 

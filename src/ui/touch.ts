@@ -10,7 +10,6 @@ import { isTouchDevice } from '../core/util';
 import { input, type Btn } from '../input/input';
 import { settings } from '../systems/settings';
 import { $, h, iconLabel } from './dom';
-import { uiIcon } from '../art/uiIcons';
 
 class TouchControls {
   private root!: HTMLElement;
@@ -42,7 +41,7 @@ class TouchControls {
       mk('t-attack', 'B', 'attack', '攻擊'),
       mk('t-ok', 'OK', 'confirm', '調查'));
     const dpad = h('div', { class: 'tdpad' }, mk('t-up', '[up]', 'up'), mk('t-left', '[left]', 'left'), mk('t-right', '[right]', 'right'), mk('t-down', '[down]', 'down'));
-    this.root.append(this.zone, buttons, dpad, h('div', { class: 'rotate-hint' }, uiIcon('phone'), '建議將手機轉為橫向遊玩'));
+    this.root.append(this.zone, buttons, dpad);
 
     this.zone.addEventListener('pointerdown', (e) => {
       e.preventDefault();

@@ -7,6 +7,8 @@ import { SKILLS } from '../data/skills';
 import { input } from '../input/input';
 import { session } from '../net/session';
 import { registerServiceWorker, requestPersistence } from '../pwa/registerSW';
+import { needsInstall, showInstallGate } from '../pwa/installGate';
+import { initRotateLock, refreshRotateLock } from '../ui/rotateLock';
 import { BootScene } from '../scenes/bootScene';
 import { TitleScene } from '../scenes/titleScene';
 import { audio } from '../systems/audio';
@@ -60,6 +62,12 @@ class App {
 
   async boot(): Promise<void> {
     settings.load();
+    // phones must run the installed (home-screen) web app; in a phone browser show install steps instead
+    if (needsInstall()) {
+      registerServiceWorker();
+      showInstallGate();
+      return;
+    }
     if (import.meta.env.DEV) (window as any).__tpa = { G, input, saves, session, bus };
     input.init();
     audio.init();
@@ -70,6 +78,7 @@ class App {
     saves.installLifecycleSaves(() => G.playing && G.mode === 'single');
     window.addEventListener('pagehide', () => { if (G.mode === 'multi') session.leave(true); });
 
+    initRotateLock();
     await loadFonts();
     const boot = new BootScene();
     G.game = new Phaser.Game({
@@ -113,6 +122,7 @@ class App {
     window.addEventListener('orientationchange', () => setTimeout(layout, 300));
     await new Promise<void>((r) => { boot.onDone = r; });
     orient();
+    refreshRotateLock();
     const splash = document.getElementById('boot-splash');
     splash?.classList.add('hide');
     setTimeout(() => splash?.remove(), 600);

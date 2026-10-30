@@ -13,7 +13,7 @@ export type UiIconName =
   | 'crown' | 'speaker' | 'chat' | 'gamepad' | 'globe' | 'check' | 'back' | 'close' | 'lightning' | 'counter'
   | 'up' | 'down' | 'left' | 'right' | 'more' | 'shard' | 'heart' | 'skull' | 'fire' | 'zzz' | 'spiral'
   | 'chain' | 'atkUp' | 'atkDown' | 'defUp' | 'defDown' | 'regen' | 'diamond' | 'blind' | 'wing' | 'spike'
-  | 'boss' | 'note' | 'camera';
+  | 'boss' | 'note' | 'camera' | 'share' | 'addSquare' | 'dots' | 'rotate';
 
 const S = 48;
 const canvasCache = new Map<string, HTMLCanvasElement>();
@@ -111,6 +111,10 @@ const DRAW: Record<UiIconName, (d: Doodle) => void> = {
   spike: (d) => { for (const x of [10, 24, 38]) d.shape([[x - 7, 40], [x, 8], [x + 7, 40]], '#c0c0c0', 2); },
   boss: (d) => { d.blob(24, 26, 17, 16, '#ff4040', 2); d.shape([[10, 14], [8, 2], [18, 12]], '#ffffff', 2); d.shape([[38, 14], [40, 2], [30, 12]], '#ffffff', 2); d.line([[14, 22], [21, 26]], 3); d.line([[34, 22], [27, 26]], 3); },
   note: (d) => { d.line([[32, 8], [32, 34]], 4); d.blob(26, 36, 7, 5, '#000000', 0); d.line([[32, 8], [42, 14]], 4); },
+  share: (d) => { d.line([[14, 18], [8, 18], [8, 44], [40, 44], [40, 18], [34, 18]], 4, '#0080ff'); d.line([[24, 32], [24, 6]], 4, '#0080ff'); d.line([[16, 13], [24, 5], [32, 13]], 4, '#0080ff'); },
+  addSquare: (d) => { d.shape([[6, 6], [42, 6], [42, 42], [6, 42]], '#ffffff', 3); d.line([[24, 14], [24, 34]], 4); d.line([[14, 24], [34, 24]], 4); },
+  dots: (d) => { for (const y of [10, 24, 38]) d.dot(24, y, 4.5); },
+  rotate: (d) => { d.shape([[16, 6], [32, 6], [32, 42], [16, 42]], '#404040', 2); d.shape([[19, 10], [29, 10], [29, 36], [19, 36]], '#80ffff', 1); d.line([[38, 14], [44, 24], [38, 34]], 3, '#ff8040'); d.shape([[36, 30], [44, 36], [34, 38]], '#ff8040', 1); },
   camera: (d) => { d.shape([[4, 14], [16, 14], [20, 8], [30, 8], [34, 14], [44, 14], [44, 40], [4, 40]], '#808080', 2); d.blob(24, 27, 9, 9, '#80c0ff', 2); },
 };
 

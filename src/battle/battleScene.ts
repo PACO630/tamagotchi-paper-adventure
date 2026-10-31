@@ -601,9 +601,11 @@ export class BattleScene extends Phaser.Scene {
   /** Confirm-type keys, for commands that need to know when the button is released. */
   private static HOLD_KEYS = new Set(['Enter', 'NumpadEnter', 'Space', 'KeyJ', 'KeyX', 'KeyE', 'KeyZ']);
 
+  /** Client (finger) coordinates → battle-world coordinates (phones scroll the battle camera). */
   private toGame(clientX: number, clientY: number): { x: number; y: number } {
     const r = this.game.canvas.getBoundingClientRect();
-    return { x: ((clientX - r.left) / r.width) * this.scale.width, y: ((clientY - r.top) / r.height) * this.scale.height };
+    const p = this.cameras.main.getWorldPoint(((clientX - r.left) / r.width) * this.scale.width, ((clientY - r.top) / r.height) * this.scale.height);
+    return { x: p.x, y: p.y };
   }
 
   /** 按住放開: hold to charge, let go inside the green zone. */
@@ -690,9 +692,14 @@ export class BattleScene extends Phaser.Scene {
         if (['up', 'down', 'left', 'right'].includes(b)) { finish('ok'); return true; }
         return b === 'confirm' || b === 'attack' || b === 'jump';
       });
+      const lx = ex - sx, ly = ey - sy, len = Math.hypot(lx, ly);
+      const ux = lx / len, uy = ly / len;
+      const offLine = (q: { x: number; y: number }) => Math.abs((q.x - sx) * uy - (q.y - sy) * ux);
       const onDown = (e: PointerEvent) => {
         const p = this.toGame(e.clientX, e.clientY);
-        if (Math.hypot(p.x - sx, p.y - sy) < 70) { dragging = true; pts.length = 0; pts.push(p); }
+        // forgiving start: near the green dot, or anywhere on the first half of the line
+        const along = (p.x - sx) * ux + (p.y - sy) * uy;
+        if (Math.hypot(p.x - sx, p.y - sy) < 110 || (along > -40 && along < len * 0.5 && offLine(p) < 70)) { dragging = true; pts.length = 0; pts.push(p); }
       };
       const onMove = (e: PointerEvent) => {
         if (!dragging) return;
@@ -705,16 +712,18 @@ export class BattleScene extends Phaser.Scene {
       const onUp = () => {
         if (!dragging || done) return;
         dragging = false;
-        const last = pts[pts.length - 1];
-        if (!last || Math.hypot(last.x - ex, last.y - ey) > 75) { finish('ok'); return; }
-        // average distance from the fold line
-        const lx = ex - sx, ly = ey - sy, len = Math.hypot(lx, ly);
-        const dev = pts.reduce((a, q) => a + Math.abs(((q.x - sx) * ly - (q.y - sy) * lx) / len), 0) / pts.length;
-        finish(dev < 20 / k ? 'great' : dev < 42 / k ? 'nice' : 'ok');
+        const first = pts[0], last = pts[pts.length - 1];
+        if (!first || pts.length < 2) return; // a tap, not a stroke: keep waiting
+        // how far the finger travelled along the fold line (green → pink), and how straight
+        const cover = ((last.x - first.x) * ux + (last.y - first.y) * uy) / len;
+        const dev = pts.reduce((a, q) => a + offLine(q), 0) / pts.length;
+        if (cover < 0.35) { finish('ok'); return; }
+        finish(cover >= 0.7 && dev < 32 / k ? 'great' : cover >= 0.5 && dev < 60 / k ? 'nice' : 'ok');
       };
       window.addEventListener('pointerdown', onDown, { capture: true });
       window.addEventListener('pointermove', onMove, { capture: true });
       window.addEventListener('pointerup', onUp, { capture: true });
+      window.addEventListener('pointercancel', onUp, { capture: true });
       const timeout = this.time.delayedCall(limit, () => finish(pts.length > 3 ? 'ok' : 'none'));
       const finish = (q: Quality) => {
         if (done) return;
@@ -723,6 +732,7 @@ export class BattleScene extends Phaser.Scene {
         window.removeEventListener('pointerdown', onDown, { capture: true });
         window.removeEventListener('pointermove', onMove, { capture: true });
         window.removeEventListener('pointerup', onUp, { capture: true });
+        window.removeEventListener('pointercancel', onUp, { capture: true });
         this.tweens.killTweensOf(startDot);
         if (q === 'great' || q === 'nice') {
           // the fold: a quick white flash along the line

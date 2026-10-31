@@ -139,10 +139,12 @@ export class StageScene extends Phaser.Scene implements StoryHost {
     const throne = this.tex('stage:throne', 260, 300, (g) => {
       g.fillStyle = '#b89ae8'; g.strokeStyle = '#2a1a4a'; g.lineWidth = 6;
       g.beginPath(); g.moveTo(30, 300); g.lineTo(40, 60); g.quadraticCurveTo(130, -20, 220, 60); g.lineTo(230, 300); g.closePath(); g.fill(); g.stroke();
-      g.fillStyle = '#e8d8ff'; g.fillRect(60, 170, 140, 60); g.strokeRect(60, 170, 140, 60);
+      // a cushion instead of a plaque (the plaque made the throne look like a gravestone)
+      g.fillStyle = '#ff8ac4'; g.beginPath(); g.ellipse(130, 240, 80, 22, 0, 0, Math.PI * 2); g.fill(); g.stroke();
       g.fillStyle = '#ffd23a'; for (const x of [40, 130, 220]) { g.beginPath(); g.moveTo(x - 14, 60); g.lineTo(x, 26); g.lineTo(x + 14, 60); g.fill(); }
     });
-    this.add.image(STAGE_W / 2, zToY(30) + 6, throne).setOrigin(0.5, 1).setDepth(zToY(30) - 2);
+    // (always behind everyone: the villain sits in front of it instead of disappearing inside it)
+    this.add.image(STAGE_W / 2, zToY(30) + 6, throne).setOrigin(0.5, 1).setDepth(-45);
     this.add.particles(0, 0, 'p_mote', { x: { min: 0, max: STAGE_W }, y: { min: 0, max: GAME_H }, speedY: { min: -30, max: -8 }, lifespan: 6000, frequency: 90, alpha: { start: 0.8, end: 0 }, scale: { start: 1.3, end: 0.3 } }).setDepth(7000);
     const label = this.add.text(30, 26, '與此同時……', { fontFamily: FONT, fontSize: '34px', color: '#e8d8ff', stroke: '#1a0a2a', strokeThickness: 8 }).setScrollFactor(0).setDepth(9000).setAlpha(0);
     this.tweens.add({ targets: label, alpha: 1, duration: 600, hold: 2600, yoyo: true });
@@ -240,7 +242,9 @@ export class StageScene extends Phaser.Scene implements StoryHost {
   spawnActor(actor: string, look: string | NpcLook, x: number, z: number, dark?: boolean, dir?: 1 | -1, fx?: string): void {
     this.actors.get(actor)?.destroy();
     const t = this.lookTarget(look === 'hero' ? 'mametchi' : look, dark);
-    const a = new Actor(this, t, x, sz(z), 0.9, !!t.charId);
+    // the villain on the throne is drawn bigger so he reads as the boss of the palace
+    const boss = look === 'shadow' || look === 'eternatchi';
+    const a = new Actor(this, t, x, sz(z), boss ? 1.35 : 0.9, !!t.charId);
     const name = typeof look === 'string' ? (CHARACTERS[(look === 'hero' ? 'mametchi' : look) as CharId]?.name ?? SPEAKERS[look]?.name ?? '') : '';
     if (name) a.setLabel(name, '#fffdf6');
     if (dir) { a.facingX = dir; a.view = 'side'; a.sprite.setFlipX(dir < 0); a.play('idle', true); }

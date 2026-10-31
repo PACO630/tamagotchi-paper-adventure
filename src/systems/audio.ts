@@ -175,6 +175,10 @@ class AudioEngine {
       case 'photo': this.noiseHit(out, t, 0.08, 0.4, 3000); T(2000, 0.02, 0.05, 'square', 0.15); break;
       case 'join': [523, 659, 784, 1046, 784, 1046].forEach((f, i) => T(f, i * 0.07, 0.1, 'square', 0.18)); break;
       case 'shake': this.noiseHit(out, t, 0.6, 0.35, 200, 'lowpass'); T(60, 0, 0.6, 'sawtooth', 0.2); break;
+      case 'bite': T(260, 0, 0.08, 'square', 0.25, { slide: 520 }); T(180, 0.1, 0.14, 'square', 0.25, { slide: 90 }); break;
+      case 'bubble': T(500, 0, 0.08, 'sine', 0.22, { slide: 1300 }); T(700, 0.07, 0.07, 'sine', 0.15, { slide: 1600 }); break;
+      case 'alarm': T(1100, 0, 0.12, 'square', 0.22); T(800, 0.14, 0.12, 'square', 0.22); T(1100, 0.28, 0.12, 'square', 0.22); break;
+      case 'whoosh': this.noiseHit(out, t, 0.35, 0.25, 900, 'bandpass'); break;
     }
   }
 

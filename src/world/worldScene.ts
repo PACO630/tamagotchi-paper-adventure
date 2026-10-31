@@ -32,12 +32,25 @@ import { session } from '../net/session';
 import { cinema } from '../ui/cinema';
 import { openTutorial } from '../ui/screens/tutorial';
 import { CHARACTERS } from '../data/characters';
+import { SPEAKERS } from '../data/chapters/helpers';
+import { playBook } from '../ui/storybook';
+import { ABILITIES, FieldPlay } from './fieldPlay';
+import { runNested } from '../systems/story';
+import { portraitURL } from '../art/textures';
+import { INTERLUDES } from '../data/interludes';
+import type { StageScene } from '../scenes/stageScene';
+import { playMinigame } from '../minigames';
+import type { EnemyAI, NpcLook, PlatformDef, RoomDef } from '../data/types';
 
-interface FieldEnemy { id: string; party: string[]; enemy: string; x0: number; z0: number; range: number; x: number; z: number; spr: Phaser.GameObjects.Sprite; shadow: Phaser.GameObjects.Image; phase: number; chase: boolean; alive: boolean; hop: number; showIf?: string }
+interface FieldEnemy {
+  id: string; party: string[]; enemy: string; x0: number; z0: number; range: number; x: number; z: number; spr: Phaser.GameObjects.Sprite; shadow: Phaser.GameObjects.Image;
+  phase: number; chase: boolean; alive: boolean; hop: number; showIf?: string;
+  ai: EnemyAI; small: boolean; awake: number; hidden: boolean; zzz?: Phaser.GameObjects.Text; alerted: boolean;
+}
 interface ObjView { def: ObjDef; img: Phaser.GameObjects.Image[]; label?: Phaser.GameObjects.Text; broken: boolean; open: boolean }
 interface ChestView { def: ChestDef; img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; revealed: boolean }
 interface NpcView { def: NpcDef; actor: Actor; baseX: number; t: number; busy?: boolean }
-interface PlatView { id: string; x0: number; z0: number; w: number; d: number; dx: number; dz: number; period: number; img: Phaser.GameObjects.Image; x: number; z: number; vx: number; vz: number }
+interface PlatView { id: string; def: PlatformDef; x0: number; z0: number; w: number; d: number; dx: number; dz: number; period: number; img: Phaser.GameObjects.Image; x: number; z: number; vx: number; vz: number; on: boolean }
 interface HazardView { zone: ZoneDef; piston: Phaser.GameObjects.Rectangle; active: boolean }
 
 const WALK = 230, RUN = 330, ZSPEED = 150;
@@ -79,6 +92,14 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private screenFill: (Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle)[] = [];
   private screenTiles: Phaser.GameObjects.TileSprite[] = [];
   private lastHp = -1;
+  fp!: FieldPlay;
+  /** Actors that only exist for cutscenes (henchmen, the villain, gathered partners…). */
+  private extras = new Map<string, Actor>();
+  private gathered: string[] = [];
+  private sat = 0;
+  private colorFx: Phaser.FX.ColorMatrix | null = null;
+  private area: { x0: number; x1: number; room?: RoomDef } = { x0: 0, x1: 0 };
+  private stage: StageScene | null = null;
 
   constructor() {
     super('World');
@@ -97,10 +118,12 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     this.screenFill = []; this.screenTiles = [];
     this.npcs = []; this.enemies = []; this.objects = []; this.chests = []; this.plats = []; this.hazards = [];
     this.remotes.clear(); this.pitWater = []; this.animatedTiles = []; this.spinners = []; this.trail = [];
+    this.extras.clear(); this.gathered = []; this.colorFx = null; this.stage = null;
     this.busy = false;
     this.time0 = this.time.now;
 
     this.cameras.main.setBounds(0, 0, cd.width, GAME_H);
+    this.area = { x0: 0, x1: cd.width };
     this.buildBackdrop();
     this.buildZones();
     this.buildProps();
@@ -123,6 +146,15 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     if (cd.theme.underwater || cd.zones.some((z) => z.look === 'water' || z.look === 'choco')) this.player.enableReflection();
     this.lastSafe = { x: this.player.x, z: this.player.z };
     this.refreshPartner();
+    this.updateArea(true);
+    this.fp = new FieldPlay(this);
+    // the world has lost its colour until this chapter's guardian is calmed down
+    this.sat = G.cond(cd.boss.flag) ? 0 : cd.grey ?? -0.5;
+    if (this.renderer.type === Phaser.WEBGL) {
+      this.cameras.main.clearFX();
+      this.colorFx = this.cameras.main.postFX.addColorMatrix();
+      this.applySat();
+    }
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 120);
     this.cameras.main.setDeadzone(160, 400);
@@ -219,11 +251,12 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       mid.tilePositionX = sx * 0.35;
     });
     // ground
-    this.add.tileSprite(0, GROUND_TOP - 4, cd.width, GROUND_BOTTOM - GROUND_TOP + 40, `ground:${t.id}`).setOrigin(0).setDepth(-50);
-    this.add.tileSprite(0, GROUND_TOP - 28, cd.width, 40, `gedge:${t.id}`).setOrigin(0).setDepth(-49);
-    this.add.tileSprite(0, GROUND_BOTTOM + 30, cd.width, 50, `fedge:${t.id}`).setOrigin(0).setDepth(7000);
+    const full = this.fullWidth();
+    this.add.tileSprite(0, GROUND_TOP - 4, full, GROUND_BOTTOM - GROUND_TOP + 40, `ground:${t.id}`).setOrigin(0).setDepth(-50);
+    this.add.tileSprite(0, GROUND_TOP - 28, full, 40, `gedge:${t.id}`).setOrigin(0).setDepth(-49);
+    this.add.tileSprite(0, GROUND_BOTTOM + 30, full, 50, `fedge:${t.id}`).setOrigin(0).setDepth(7000);
     // soft ambient light pools along the floor
-    for (let x = 300; x < cd.width; x += 900) {
+    for (let x = 300; x < full; x += 900) {
       this.add.image(x, GROUND_TOP + 100, 'p_warm').setScale(5, 1.6).setAlpha(0.18).setDepth(-45).setBlendMode(Phaser.BlendModes.ADD);
     }
   }
@@ -325,7 +358,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     for (const p of this.chapter.platforms) {
       const key = ensurePlatform(this, p.look ?? 'plank');
       const img = this.add.image(p.x, zToY(p.z), key).setScale(p.w / 200, (p.d / 60) * 0.8);
-      this.plats.push({ id: p.id, x0: p.x, z0: p.z, w: p.w, d: p.d, dx: p.dx ?? 0, dz: p.dz ?? 0, period: p.period ?? 3, img, x: p.x, z: p.z, vx: 0, vz: 0 });
+      this.plats.push({ id: p.id, def: p, x0: p.x, z0: p.z, w: p.w, d: p.d, dx: p.dx ?? 0, dz: p.dz ?? 0, period: p.period ?? 3, img, x: p.x, z: p.z, vx: 0, vz: 0, on: true });
     }
   }
 
@@ -372,6 +405,32 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
           this.tweens.add({ targets: img, alpha: 0.7, yoyo: true, repeat: -1, duration: 1000 });
           break;
         }
+        case 'ability': {
+          const look = def.look ?? 'spot';
+          const key = ensureObject(this, `ab_${look}`);
+          if (look === 'food_wall' || look === 'paint_wall') for (const z of [30, 100, 170, 235]) add(key, def.x, zToY(z), depthScale(z) * 0.95);
+          else if (look === 'paint_bridge') { const img = add(key, def.x, GROUND_TOP + 130, 1); img.setOrigin(0.5).setDepth(-30); }
+          else add(key, def.x, y, depthScale(def.z) * (look === 'bear' ? 1.15 : 0.9));
+          if (look === 'bear') this.tweens.add({ targets: v.img[0], scaleY: v.img[0].scaleY * 1.04, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.inOut' });
+          if (look === 'spot') this.tweens.add({ targets: v.img[0], alpha: 0.5, yoyo: true, repeat: -1, duration: 800 });
+          if (def.need) {
+            const tag = this.add.text(def.x, (look === 'paint_bridge' ? GROUND_TOP + 60 : y - 150 * depthScale(def.z)), `需要：${ABILITIES[def.need].name}`, { fontFamily: FONT, fontSize: '16px', color: '#fffdf6', stroke: '#3a2a1a', strokeThickness: 5 }).setOrigin(0.5).setDepth(y + 2);
+            v.label = tag;
+          }
+          v.open = !!def.flag && G.cond(def.flag);
+          break;
+        }
+        case 'vent': {
+          const img = add(ensureObject(this, 'vent'), def.x, y + 6, depthScale(def.z));
+          img.setDepth(y - 20);
+          this.add.particles(def.x, y - 10, 'p_bubble', { speedY: { min: -140, max: -80 }, speedX: { min: -14, max: 14 }, lifespan: 1600, frequency: 120, scale: { start: 0.7, end: 1.3 }, alpha: { start: 0.9, end: 0 } }).setDepth(y + 1);
+          break;
+        }
+        case 'plate': {
+          const img = add(this.fp?.plateTex(def.by ?? 'hero', false) ?? FieldPlay.tex(this, 'fp:plate0', 4, 4, () => undefined), def.x, y + 14, depthScale(def.z));
+          img.setDepth(y - 25);
+          break;
+        }
       }
       if (def.text && (def.type === 'switch' || def.type === 'door')) {
         v.label = this.add.text(def.x, y - 96 * depthScale(def.z), def.text, { fontFamily: FONT, fontSize: '18px', color: '#fffdf6', stroke: '#3a2a1a', strokeThickness: 5 }).setOrigin(0.5).setDepth(y + 1);
@@ -401,7 +460,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         if (open && !v.open && !instant) {
           audio.sfx('door');
           const view = this.cameras.main.worldView;
-          if (d.x < view.x + 40 || d.x > view.right - 40) this.showOffQueue.push(d.x);
+          if ((d.x < view.x + 40 || d.x > view.right - 40) && !this.area.room) this.showOffQueue.push(d.x);
           for (const img of v.img) this.tweens.add({ targets: img, y: img.y - 260, alpha: 0, delay: this.showOffQueue.length ? 1300 : 0, duration: 700, ease: 'Back.in' });
         } else if (open) v.img.forEach((i) => i.setVisible(false));
         v.open = open;
@@ -410,8 +469,27 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       case 'switch': {
         const on = !!d.flag && G.cond(d.flag);
         v.img[0]?.setTexture(ensureObject(this, on ? 'switch_on' : 'switch_off'));
+        if (!v.img[0]?.visible && show && !instant) { v.img[0]?.setScale(0.1); this.tweens.add({ targets: v.img[0], scale: depthScale(d.z), duration: 380, ease: 'Back.out' }); }
+        v.img.forEach((i) => i.setVisible(show));
+        v.label?.setVisible(show);
         break;
       }
+      case 'ability': {
+        const solved = !!d.flag && G.cond(d.flag);
+        const visible = !d.showIf || G.cond(d.showIf);
+        if (solved && !v.open && !instant) {
+          v.label?.setVisible(false);
+          for (const img of v.img) {
+            if (d.look === 'bear') this.tweens.add({ targets: img, x: img.x + 520, y: img.y + 40, angle: 12, alpha: 0, duration: 1600, ease: 'Sine.in', onComplete: () => img.setVisible(false) });
+            else if (d.look === 'paint_bridge') this.tweens.add({ targets: img, alpha: 0, duration: 600, onComplete: () => img.setVisible(false) });
+            else { this.paperBurst(img.x, img.y - 50, d.look === 'food_wall' ? 0xffd08a : 0xb88cff); this.tweens.add({ targets: img, scaleX: 0, scaleY: 0, alpha: 0, duration: 450, ease: 'Back.in', onComplete: () => img.setVisible(false) }); }
+          }
+        } else if (solved || !visible) { v.img.forEach((i) => i.setVisible(false)); v.label?.setVisible(false); }
+        else { v.img.forEach((i) => i.setVisible(true)); v.label?.setVisible(true); }
+        v.open = solved;
+        break;
+      }
+      case 'plate': case 'vent': break;
       default:
         v.img.forEach((i) => i.setVisible(show));
         v.label?.setVisible(show);
@@ -467,7 +545,12 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       const shadow = this.add.image(e.x, y, 'shadow').setScale(0.6, 0.8);
       const spr = this.add.sprite(e.x, y - (flying ? 50 : 0), key, 'idle0').setOrigin(0.5, 0.96).setScale(0.8 * depthScale(e.z));
       spr.play(`${key}#idle`);
-      const fe: FieldEnemy = { id: e.id, party: e.party, enemy: e.enemy, x0: e.x, z0: e.z, range: e.range ?? 120, x: e.x, z: e.z, spr, shadow, phase: hashString(e.id) % 100, chase: false, alive: true, hop: 0, showIf: e.showIf };
+      const ai = e.ai ?? 'patrol';
+      const fe: FieldEnemy = {
+        id: e.id, party: e.party, enemy: e.enemy, x0: e.x, z0: e.z, range: e.range ?? 120, x: e.x, z: e.z, spr, shadow, phase: hashString(e.id) % 100, chase: false, alive: true, hop: 0, showIf: e.showIf,
+        ai, small: !!e.small, awake: 0, hidden: ai === 'ambush', alerted: false,
+      };
+      if (ai === 'sleeper') fe.zzz = this.add.text(e.x, y - 90, 'Zz', { fontFamily: FONT, fontSize: '22px', color: '#8ab0ff', stroke: '#fffdf6', strokeThickness: 5 }).setOrigin(0.5);
       this.enemies.push(fe);
     }
   }
@@ -569,6 +652,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private safeStart(): { x: number; z: number } {
     const cd = this.chapter;
     const p = G.state.position;
+    // saved inside a side room: rooms are only reachable through their door, so the spot is fine
+    if (cd.rooms?.some((r) => p.x >= r.x && p.x <= r.x + r.w)) return p;
     if (!(p.x >= 0) || p.x > cd.width) return cd.start;
     for (const o of cd.objects) {
       if (o.x <= cd.start.x || o.x >= p.x) continue;
@@ -598,9 +683,14 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     this.updateNpcs(dt);
     this.updateRemotes(dt);
 
+    // safety net: nothing should keep the player frozen once all cutscenes are over
+    if (this.player.locked && !cinema.active && !this.falling && !storyRunning()) this.player.locked = false;
     const canControl = !input.blocked && !this.busy && !storyRunning() && !battleActive() && !dialogue.open;
     this.updatePlayer(dt, canControl);
+    this.updateArea();
+    this.fp.update(t, dt, canControl);
     this.updatePartner();
+    for (const a of this.extras.values()) a.sync();
     this.updateDarkness(dt);
     this.updateInteractPrompt(canControl);
 
@@ -608,12 +698,15 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       if (input.justPressed('menu') || input.justPressed('cancel')) { audio.sfx('menu'); void openPauseMenu(this); }
       else if (input.justPressed('confirm')) this.tryInteract();
       else if (input.justPressed('item')) hud.quickUse();
+      else if (input.justPressed('ability')) this.fp.use();
+      else if (input.justPressed('partner')) this.cyclePartner();
     }
 
     void this.processShowOff();
     // watchdog: a script that has done nothing for a long time with nothing on screen is stuck → release the player
     if (storyRunning() && storyIdleMs() > 20000 && !dialogue.open && !battleActive() && !this.scene.isActive('Opening')
-      && !document.querySelector('#ui .layer:not(.out)') && !document.querySelector('.chapter-card')) {
+      && !this.scene.isActive('Stage') && !this.scene.isActive('SkyBattle')
+      && !document.querySelector('#ui .layer:not(.out)') && !document.querySelector('.chapter-card, .storybook, .asm-root, .name-card')) {
       console.warn('story watchdog: resetting a stuck script');
       resetStory();
       this.cinema(false);
@@ -642,7 +735,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   }
 
   private platformAt(x: number, z: number): PlatView | null {
-    for (const p of this.plats) if (Math.abs(x - p.x) < p.w / 2 && Math.abs(z - p.z) < p.d / 2 + 6) return p;
+    for (const p of this.plats) if (p.on && Math.abs(x - p.x) < p.w / 2 && Math.abs(z - p.z) < p.d / 2 + 6) return p;
     return null;
   }
 
@@ -656,6 +749,20 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       p.z = nz;
       const y = zToY(nz);
       p.img.setPosition(nx, y).setDepth(y - 20);
+      // painted / secret platforms only exist while their condition holds
+      const shown = !p.def.showIf || G.cond(p.def.showIf);
+      // (multiplayer: nobody may have the right partner, so secret paths simply stay visible)
+      const secret = p.def.secret ? G.mode === 'multi' || (this.fp?.reveal[p.def.secret] ?? 0) > 0 : true;
+      const on = shown && secret;
+      if (on !== p.on) {
+        p.on = on;
+        if (on) { p.img.setAlpha(0).setVisible(true); this.tweens.add({ targets: p.img, alpha: 1, duration: 350 }); this.paperBurst(nx, y - 10, 0xffffff, 6); }
+      }
+      if (!on) {
+        // a faint shimmer hints at secret platforms
+        const hint = p.def.secret && shown ? 0.07 + Math.max(0, Math.sin(t * 2 + p.x0)) * 0.08 : 0;
+        p.img.setVisible(hint > 0).setAlpha(hint);
+      } else if (p.def.secret && (this.fp?.reveal[p.def.secret] ?? 0) < 2) p.img.setAlpha(Math.floor(t * 8) % 2 ? 0.5 : 1);
     }
   }
 
@@ -726,7 +833,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     let nx = p.x + vx * dt;
     const nz = clamp(p.z + vz * dt, 4, DEPTH - 4);
     nx = this.applyBlockers(p.x, nx, nz);
-    nx = clamp(nx, 30, this.chapter.width - 30);
+    nx = clamp(nx, this.area.x0 + 30, this.area.x1 - 30);
     p.x = nx;
     p.z = nz;
 
@@ -742,7 +849,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         if (!nearPit) this.lastSafe = { x: p.x, z: p.z };
       }
       // hazards
-      for (const h of this.hazards) if (h.active && this.inZone(h.zone, p.x, p.z) && this.invuln <= 0) this.hurtPlayer(h.zone.dmg ?? 1, -p.facingX);
+      for (const h of this.hazards) if (h.active && this.inZone(h.zone, p.x, p.z) && this.invuln <= 0 && !this.fp.shielded) this.hurtPlayer(h.zone.dmg ?? 1, -p.facingX);
       // springs
       const spring = this.objects.find((o) => o.def.type === 'spring' && Math.abs(o.def.x - p.x) < 34 && Math.abs(o.def.z - p.z) < 30);
       if (spring && p.vy === 0) {
@@ -787,6 +894,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       let solid = false, r = 46;
       if (d.type === 'gate' && !o.open) solid = true;
       if (d.type === 'breakable' && !o.broken) { solid = true; if (!d.w) { r = 40; if (Math.abs(z - d.z) > 34) solid = false; } }
+      if (d.type === 'ability' && !o.open && (d.look === 'food_wall' || d.look === 'paint_wall' || d.look === 'bear') && (!d.showIf || G.cond(d.showIf))) { solid = true; r = d.look === 'bear' ? 70 : 50; }
       if (!solid) continue;
       if (ox <= d.x - r && nx > d.x - r) nx = d.x - r;
       else if (ox >= d.x + r && nx < d.x + r) nx = d.x + r;
@@ -795,9 +903,12 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     return nx;
   }
 
+  private falling = false;
+
   private fallIntoPit(): void {
     const p = this.player;
     p.locked = true;
+    this.falling = true;
     audio.sfx('hurt');
     this.tweens.add({
       targets: p.sprite, y: p.sprite.y + 80, alpha: 0, scaleX: p.sprite.scaleX * 0.5, duration: 350, ease: 'Quad.in',
@@ -805,6 +916,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         p.x = this.lastSafe.x; p.z = this.lastSafe.z; p.y = 0; p.vy = 0;
         p.sprite.setAlpha(1);
         p.locked = false;
+        this.falling = false;
         p.sync();
         this.damageHero(1);
         this.invuln = 1.2;
@@ -911,35 +1023,89 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   }
 
   private updateEnemies(t: number, dt: number): void {
+    const chasing = !!this.fp?.chase;
     for (const e of this.enemies) {
       const visible = e.alive && (!e.showIf || G.cond(e.showIf)) && !(G.mode === 'multi' && G.cond(`defeated:${e.id}`));
       e.spr.setVisible(visible);
-      e.shadow.setVisible(visible);
+      e.shadow.setVisible(visible && !e.hidden);
+      e.zzz?.setVisible(visible && e.ai === 'sleeper' && e.awake <= 0);
       if (!visible) continue;
       const px = this.player.x, pz = this.player.z;
       const dist = Math.hypot(px - e.x, (pz - e.z) * 1.5);
-      const blocked = this.busy || storyRunning() || battleActive() || input.blocked;
-      e.chase = !blocked && dist < 230 && Math.abs(px - e.x0) < e.range + 260;
-      if (e.chase) {
-        const sp = 95;
-        e.x += Math.sign(px - e.x) * sp * dt;
-        e.z += Math.sign(pz - e.z) * sp * 0.6 * dt;
+      const blocked = this.busy || storyRunning() || battleActive() || input.blocked || chasing;
+      const hiddenPlayer = !!this.fp?.hidden;
+      const lure = this.fp?.lureFor(e.x, e.z) ?? null;
+      const running = input.axis().run && (Math.abs(input.axis().x) > 0.2 || Math.abs(input.axis().y) > 0.2);
+      let speed = 95, sight = 230;
+      if (e.ai === 'chaser') { speed = 150; sight = 380; }
+      // ambushers wait out of sight until you come close
+      if (e.hidden) {
+        e.spr.setAlpha(0.0);
+        if (!blocked && dist < 170 && !hiddenPlayer) {
+          e.hidden = false;
+          e.spr.setAlpha(1);
+          this.emoteAt(e.x, zToY(e.z) - 110, '!');
+          audio.sfx('warning');
+          this.tweens.add({ targets: e.spr, scaleY: { from: 0.2, to: e.spr.scaleY }, duration: 260, ease: 'Back.out' });
+          e.awake = 3;
+        } else {
+          // a rustle gives the hiding place away
+          if (Math.random() < dt * 1.2) this.paperBurst(e.x, zToY(e.z) - 10, 0xc8b8a0, 3);
+          continue;
+        }
+      }
+      if (e.ai === 'sleeper' && e.awake <= 0) {
+        e.zzz?.setPosition(e.x + 30 + Math.sin(t * 2) * 6, zToY(e.z) - 100 - (t * 20) % 20);
+        e.spr.setAngle(Math.sin(t * 1.5) * 4);
+        const wakes = !blocked && !hiddenPlayer && (dist < 70 || (running && dist < 240));
+        if (wakes) { e.awake = 4; this.emoteAt(e.x, zToY(e.z) - 110, '!'); audio.sfx('warning'); e.spr.setAngle(0); }
+        else {
+          // jumping on a sleeping enemy still starts a first-strike battle
+          if (!blocked && dist < 52 && this.player.y > 5 && this.player.vy < 0 && this.invuln <= 0) this.startFieldBattle(e, 'jump');
+          const y0 = zToY(e.z);
+          e.spr.setPosition(e.x, y0).setDepth(y0);
+          e.shadow.setPosition(e.x, y0).setDepth(y0 - 1);
+          continue;
+        }
+      }
+      if (e.awake > 0) { e.awake -= dt; speed = Math.max(speed, 140); sight = 420; }
+      const wasChasing = e.chase;
+      e.chase = !blocked && !hiddenPlayer && !lure && dist < sight && Math.abs(px - e.x0) < e.range + sight + 30;
+      if (e.chase && !wasChasing && e.ai === 'chaser' && !e.alerted) { e.alerted = true; this.emoteAt(e.x, zToY(e.z) - 110, '!'); }
+      if (!e.chase && dist > sight + 200) e.alerted = false;
+      if (lure && !blocked) {
+        // distracted by Memetchi's cake
+        const dx = lure.x - e.x, dz = lure.z - e.z;
+        if (Math.hypot(dx, dz) > 40) { e.x += Math.sign(dx) * 120 * dt; e.z += Math.sign(dz) * 70 * dt; }
+        else if (Math.random() < dt * 2) this.paperBurst(e.x, zToY(e.z) - 40, 0xff8ac4, 2);
+      } else if (e.chase) {
+        e.x += Math.sign(px - e.x) * speed * dt;
+        e.z += Math.sign(pz - e.z) * speed * 0.6 * dt;
       } else {
         const tx = e.x0 + Math.sin(t * 0.7 + e.phase) * e.range;
         e.x += (tx - e.x) * Math.min(1, dt * 2);
         e.z += (e.z0 - e.z) * Math.min(1, dt * 1.5);
       }
-      e.hop = Math.abs(Math.sin(t * 6 + e.phase)) * (e.chase ? 10 : 4);
+      e.z = clamp(e.z, 6, DEPTH - 6);
+      e.hop = Math.abs(Math.sin(t * (e.chase ? 9 : 6) + e.phase)) * (e.chase ? 12 : 4);
       const flying = ENEMIES[e.enemy].traits.includes('flying');
       const y = zToY(e.z);
       e.spr.setPosition(e.x, y - e.hop - (flying ? 50 : 0)).setDepth(y).setScale(0.8 * depthScale(e.z));
-      e.spr.setFlipX(px < e.x);
+      e.spr.setFlipX((lure ? lure.x : px) < e.x);
       e.shadow.setPosition(e.x, y).setDepth(y - 1).setScale(0.55 * depthScale(e.z), 0.8);
       // contact
       if (!blocked && dist < 52 && this.player.y < 40 && this.invuln <= 0) {
         this.startFieldBattle(e, this.player.vy < 0 && this.player.y > 5 ? 'jump' : null);
       }
     }
+  }
+
+  /** A "!" bubble at a world position (enemies spotting you). */
+  private emoteAt(x: number, y: number, emote: string): void {
+    const b = this.add.image(x + 26, y, 'emote_bubble').setDepth(9600).setScale(0.1);
+    const t = this.add.text(x + 26, y - 4, emote, { fontFamily: FONT, fontSize: '28px', color: '#e8203a' }).setOrigin(0.5).setDepth(9601).setScale(0.1);
+    this.tweens.add({ targets: [b, t], scale: 0.8, duration: 180, ease: 'Back.out' });
+    this.time.delayedCall(900, () => { b.destroy(); t.destroy(); });
   }
 
   private landOnEnemyCheck(_: boolean): void {
@@ -976,6 +1142,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       const d = o.def;
       if (d.showIf && !G.cond(d.showIf)) continue;
       if (d.type === 'sign' || d.type === 'savepoint' || d.type === 'door' || d.type === 'shard' || d.type === 'switch') consider(d.type, d.id, d.x, d.z, d.type === 'savepoint' ? 170 : 110);
+      if (d.type === 'ability' && !o.open) consider('ability', d.id, d.x, d.look === 'paint_bridge' || d.look === 'food_wall' || d.look === 'paint_wall' ? p.z : d.z, 140, d.look === 'paint_bridge' ? 200 : 130);
     }
     return best;
   }
@@ -987,13 +1154,14 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     if (n) {
       const bob = Math.sin(this.time.now / 160) * 4;
       this.interactBubble.setPosition(n.x, n.y - 10 + bob);
-      this.interactText.setPosition(n.x, n.y - 14 + bob).setText(n.kind === 'npc' ? '…' : n.kind === 'chest' ? '?' : '!');
+      this.interactText.setPosition(n.x, n.y - 14 + bob).setText(n.kind === 'npc' ? '…' : n.kind === 'chest' ? '?' : n.kind === 'ability' ? '★' : '!');
     }
   }
 
   private tryInteract(): void {
     const n = this.nearest();
     if (!n) return;
+    if (n.kind === 'ability') { void this.tryAbilitySpot(n.id); return; }
     if (G.mode === 'multi' && !G.isAuthority && n.kind !== 'savepoint' && n.kind !== 'sign') {
       worldNet.requestInteract(n.kind, n.id);
       audio.sfx('click');
@@ -1047,7 +1215,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         this.player.x = o.def.to.x; this.player.z = o.def.to.z;
         if (this.partner) { this.partner.x = o.def.to.x - 50; this.partner.z = o.def.to.z; this.trail = []; }
         if (o.def.flag) G.dispatch({ a: 'flag', k: o.def.flag, v: true });
-        else toast('……好像回到了起點。', 'warn', 1500);
+        else if (o.def.look !== 'room') toast('……好像回到了起點。', 'warn', 1500);
+        this.updateArea();
         this.cameras.main.fadeIn(250);
         this.busy = false;
         break;
@@ -1070,6 +1239,10 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         break;
       }
       case 'heal': this.healParty(); break;
+      case 'ability': await this.abilitySpot(id, extra?.who); break;
+      case 'eat': this.eatEnemy(id); break;
+      case 'chaseDone': { const c = this.chapter.chases?.find((x) => x.id === id); if (c) G.dispatch({ a: 'flag', k: c.flag, v: true }); break; }
+      case 'mirrorDone': if (this.chapter.mirror?.flag === id) G.dispatch({ a: 'flag', k: id, v: true }); break;
       case 'hammer': this.hammerAt(Number(id), Number(extra?.z ?? 120)); break;
       case 'enemy': await this.fieldBattle(id, extra?.kind ?? null); break;
     }
@@ -1126,7 +1299,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         else { o.broken = true; o.img.forEach((i) => i.setVisible(false)); }
         return;
       }
-      if (d.type === 'switch' && Math.abs(d.z - z) < 50) { this.activateSwitch(d.id); return; }
+      if (d.type === 'switch' && Math.abs(d.z - z) < 50 && (!d.showIf || G.cond(d.showIf))) { this.activateSwitch(d.id); return; }
     }
     for (const e of this.enemies) if (e.alive && e.spr.visible && Math.abs(e.x - hx) < 60 && Math.abs(e.z - z) < 45) { this.startFieldBattle(e, 'hammer'); return; }
     audio.sfx('hammer', 1.3);
@@ -1167,20 +1340,29 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private async bossSequence(): Promise<void> {
     const b = this.chapter.boss;
     this.player.x = Math.min(this.player.x, b.x - 280);
-    const bossName = ENEMIES[b.enemy]?.name ?? '';
+    const def = ENEMIES[b.enemy];
+    const bossName = def?.name ?? '';
+    // Paper-style boss entrance: the camera pushes in, the boss roars, a name card slides in
     const entrance: Script = [
       { do: 'cinema', on: true },
+      { do: 'gather', on: true },
       { do: 'pan', x: b.x - 160, ms: 1400 },
+      { do: 'zoom', z: 1.18, ms: 500 },
       { do: 'fx', name: 'bossRoar' },
-      { do: 'banner', title: 'BOSS', sub: bossName },
-      { do: 'wait', ms: 900 },
+      { do: 'card', title: bossName, sub: def?.epithet ?? 'BOSS', enemy: b.enemy, color: '#e8203a' },
+      { do: 'zoom', z: 1, ms: 400 },
       { do: 'follow', ms: 500 },
     ];
     const ok = await this.runStory([...entrance, ...b.pre]);
     if (!ok || !G.cond(b.flag)) return;
     bus.emit('boss:defeated', b.id);
     bus.emit('autosave', 'boss');
-    const victory: Script = [{ do: 'cinema', on: true }, { do: 'follow', ms: 0 }, { do: 'anim', actor: 'hero', anim: 'win', ms: 1400 }, { do: 'fx', name: 'bossFade' }];
+    // the guardian calms down and the colour floods back into the world
+    const victory: Script = [
+      { do: 'cinema', on: true }, { do: 'gather', on: true }, { do: 'follow', ms: 0 },
+      { do: 'anim', actor: 'hero', anim: 'win', ms: 1200 }, { do: 'fx', name: 'bossFade' },
+      { do: 'color', sat: 0, ms: 2400, wave: true },
+    ];
     await this.runStory([...victory, ...b.post]);
     if (!this.chapter.objects.some((o) => o.type === 'shard')) await this.runStory([{ do: 'cinema', on: true }, { do: 'fx', name: 'starburst', actor: 'hero' }, { do: 'anim', actor: 'hero', anim: 'win', ms: 1600 }, ...this.chapter.outro]);
   }
@@ -1249,6 +1431,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     bus.emit('chapter:complete', cd.num);
     this.broadcastFx('chapterClear', cd.num);
     await showChapterClear(cd);
+    // between chapters: what the villain is up to, then the airship ride to the next place
+    for (const k of [cd.id, `${cd.id}b`]) if (INTERLUDES[k]) await this.interlude(k);
     const next = cd.num + 1;
     if (G.local && G.mode === 'multi') G.local.mpHighestChapter = Math.max(G.local.mpHighestChapter, next);
     G.dispatch({ a: 'chapter', n: next });
@@ -1280,7 +1464,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   }
 
   emote(actor: string, emote: string): void {
-    const a = actor === 'player' || actor === 'hero' ? this.player : this.npcs.find((n) => n.def.id === actor)?.actor;
+    const a = this.actorOf(actor);
     if (!a) return;
     const y = a.sprite.y - 120 * a.scaleNow();
     const b = this.add.image(a.x + 30, y, 'emote_bubble').setDepth(9600).setScale(0.1);
@@ -1308,11 +1492,18 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private actorOf(name: string): Actor | null {
     if (name === 'player' || name === 'hero') return this.player;
     if (name === 'partner') return this.partner;
+    const extra = this.extras.get(name);
+    if (extra) return extra;
+    if (name in CHARACTERS) {
+      if (this.partner && G.state.partners.active === name) return this.partner;
+      if (G.mode === 'multi') for (const [key, a] of this.remotes) if (worldNet.remotes.get(key)?.charId === name) return a;
+    }
     return this.npcs.find((n) => n.def.id === name)?.actor ?? null;
   }
 
   cinema(on: boolean): void {
     if (on) cinema.on(); else cinema.off();
+    if (!on && this.gathered.length) this.gather(false);
     this.player.locked = on;
     hud.setVisible(!on);
   }
@@ -1320,7 +1511,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   pan(x: number, ms: number): Promise<void> {
     const cam = this.cameras.main;
     cam.stopFollow();
-    const tx = clamp(x, cam.width / 2, this.chapter.width - cam.width / 2);
+    const tx = clamp(x, this.area.x0 + cam.width / 2, this.area.x1 - cam.width / 2);
     if (ms <= 0) { cam.centerOn(tx, cam.midPoint.y); return Promise.resolve(); }
     return new Promise((r) => {
       cam.pan(tx, cam.midPoint.y, ms, 'Sine.easeInOut', true);
@@ -1442,6 +1633,55 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         this.time.delayedCall(1200, () => p.destroy());
         return delay(700);
       }
+      case 'ab_kuchipatchi': case 'ab_memetchi': case 'ab_mimitchi': case 'ab_violetchi':
+      case 'ab_oyajitchi': case 'ab_gozarutchi': case 'ab_maskutchi': case 'ab_mametchi': {
+        const who = name.slice(3);
+        const doer = this.partner ?? this.player;
+        const ox = doer.x, oy = zToY(doer.z) - 70;
+        const ty = GROUND_TOP + 60;
+        if (who === 'kuchipatchi') {
+          // everything gets sucked into the big mouth
+          audio.sfx('bite');
+          const pe = this.add.particles(px, ty, 'p_paper', { x: { min: -60, max: 60 }, y: { min: -120, max: 60 }, moveToX: ox, moveToY: oy, lifespan: 700, frequency: 18, scale: { start: 1.2, end: 0.2 }, tint: [0xffd08a, 0xff8ac4, 0xffffff] }).setDepth(9000);
+          if (settings.current.screenShake) this.cameras.main.shake(700, 0.004);
+          return delay(900).then(() => { pe.stop(); audio.sfx('bite'); this.time.delayedCall(800, () => pe.destroy()); return delay(300); });
+        }
+        if (who === 'memetchi') {
+          const cake = this.add.image(ox, oy, FieldPlay.tex(this, 'fp:cake', 70, 64, () => undefined)).setDepth(9000);
+          audio.sfx('swing');
+          this.tweens.add({ targets: cake, x: px + 160, duration: 600 });
+          this.tweens.add({ targets: cake, y: { from: oy, to: oy - 140 }, duration: 300, yoyo: true, ease: 'Quad.out' });
+          return delay(700).then(() => { audio.sfx('item'); this.paperBurst(px + 160, oy, 0xff8ac4, 14); this.time.delayedCall(1800, () => cake.destroy()); return delay(400); });
+        }
+        if (who === 'violetchi') {
+          audio.sfx('magic');
+          const pe = this.add.particles(px, ty, 'p_paper', { x: { min: -140, max: 140 }, y: { min: -160, max: 120 }, speed: { min: 20, max: 120 }, lifespan: 900, frequency: 14, scale: { start: 1.4, end: 0.3 }, tint: [0xff5a8a, 0xffd23a, 0x5ac8ff, 0x8aff7a, 0xb88cff] }).setDepth(9000);
+          return delay(1000).then(() => { pe.stop(); this.flash(0xffffff); this.time.delayedCall(1000, () => pe.destroy()); return delay(200); });
+        }
+        if (who === 'mimitchi' || who === 'mametchi') {
+          audio.sfx('magic');
+          for (let i = 0; i < 3; i++) {
+            const ring = this.add.circle(px, ty, 20, 0, 0).setStrokeStyle(5, 0x9fd8ff).setDepth(9000);
+            this.tweens.add({ targets: ring, radius: 300, alpha: 0, delay: i * 250, duration: 900, onComplete: () => ring.destroy() });
+          }
+          return delay(1000);
+        }
+        if (who === 'oyajitchi') {
+          audio.sfx('magic');
+          const glow = this.add.image(px, ty, 'p_warm').setBlendMode(Phaser.BlendModes.ADD).setDepth(8990).setScale(1);
+          this.tweens.add({ targets: glow, scale: 10, alpha: 0, duration: 1300, onComplete: () => glow.destroy() });
+          return delay(1000);
+        }
+        this.paperBurst(px, ty, 0x9fd8ff, 20);
+        audio.sfx('magic');
+        return delay(600);
+      }
+      case 'poof': {
+        this.paperBurst(px, py, 0x6a4a9a, 22);
+        audio.sfx('whoosh');
+        return delay(300);
+      }
+      case 'colorWave': this.colorWave(1600); return delay(1600);
       default:
         this.paperBurst(px, py);
         return delay(300);
@@ -1476,12 +1716,325 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
 
   private partnerJoinFx(id: CharId): void {
     const pa = this.partner;
-    cinema.flashBanner(`${CHARACTERS[id]?.name ?? ''} 加入了隊伍！`, CHARACTERS[id]?.fieldAbility ?? '');
+    void cinema.nameCard(`${CHARACTERS[id]?.name ?? ''}`, `夥伴加入！能力：${ABILITIES[id]?.name ?? ''}（${G.mode === 'multi' ? '' : '按 C 使用'}）`, portraitURL({ charId: id }, 'happy'), CHARACTERS[id]?.color ?? '#ff8ac4', 2600);
     if (!pa) return;
     this.paperBurst(pa.x, zToY(pa.z) - 60, 0xfff6a0, 22);
     pa.spin();
     const o = { y: 0 };
     this.tweens.add({ targets: o, y: 90, yoyo: true, duration: 280, ease: 'Quad.out', onUpdate: () => { pa.y = o.y; pa.sync(); }, onComplete: () => { pa.y = 0; pa.sync(); } });
+  }
+
+
+  /* ======================= staging v2 ======================= */
+
+  private lookTarget(look: string | NpcLook, dark?: boolean): DrawTarget {
+    if (typeof look !== 'string') return { npc: look, dark };
+    if (look in CHARACTERS) return { charId: look as CharId, dark };
+    const sp = SPEAKERS[look];
+    if (sp) return typeof sp.look === 'string' ? { charId: sp.look, dark: dark ?? sp.dark } : { npc: sp.look, dark: dark ?? sp.dark };
+    const npc = this.chapter.npcs.find((n) => n.id === look);
+    if (npc) return this.npcTarget(npc);
+    return { npc: { color: '#ffffff', accent: '#c0c0c0' }, dark };
+  }
+
+  private lookName(look: string | NpcLook): string {
+    if (typeof look !== 'string') return '';
+    return CHARACTERS[look as CharId]?.name ?? SPEAKERS[look]?.name ?? this.chapter.npcs.find((n) => n.id === look)?.name ?? '';
+  }
+
+  spawnActor(actor: string, look: string | NpcLook, x: number, z: number, dark?: boolean, dir?: 1 | -1, fx?: string): void {
+    this.extras.get(actor)?.destroy();
+    const t = this.lookTarget(look, dark);
+    const a = new Actor(this, t, x, clamp(z, 6, DEPTH - 6), 0.86, !!t.charId);
+    const name = this.lookName(look);
+    if (name) a.setLabel(name, '#fffdf6');
+    if (dir) { a.facingX = dir; a.view = 'side'; a.sprite.setFlipX(dir < 0); a.play('idle', true); }
+    this.extras.set(actor, a);
+    a.sync();
+    if (fx === 'poof' || fx === 'pop') {
+      this.paperBurst(x, zToY(z) - 50, fx === 'poof' ? 0x6a4a9a : 0xfff6a0, 16);
+      const s = a.scaleNow();
+      a.sprite.setScale(0.05);
+      this.tweens.add({ targets: a.sprite, scale: s, duration: 260, ease: 'Back.out' });
+      audio.sfx(fx === 'poof' ? 'whoosh' : 'flip');
+    } else if (fx === 'drop') {
+      const o = { y: 520 };
+      a.y = o.y;
+      this.tweens.add({ targets: o, y: 0, duration: 520, ease: 'Bounce.out', onUpdate: () => { a.y = o.y; a.sync(); }, onComplete: () => { a.y = 0; a.sync(); audio.sfx('land'); } });
+    }
+  }
+
+  despawnActor(actor: string, fx?: string): void {
+    const a = this.extras.get(actor);
+    if (!a) return;
+    this.extras.delete(actor);
+    this.tweens.killTweensOf(a);
+    if (fx) {
+      this.paperBurst(a.x, zToY(a.z) - 50, fx === 'poof' ? 0x6a4a9a : 0xfff6a0, 14);
+      audio.sfx(fx === 'poof' ? 'whoosh' : 'flip');
+      a.label?.setVisible(false);
+      this.tweens.add({ targets: [a.sprite, a.shadow], scaleX: 0.02, alpha: 0, duration: 260, onComplete: () => a.destroy() });
+    } else a.destroy();
+  }
+
+  walkActor(actor: string, x: number, z: number | undefined, run: boolean): Promise<void> {
+    const a = this.actorOf(actor);
+    if (!a) return Promise.resolve();
+    const npc = this.npcs.find((n) => n.actor === a);
+    if (npc) npc.busy = true;
+    const tz = z === undefined ? a.z : clamp(z, 6, DEPTH - 6);
+    const dx = x - a.x, dz = tz - a.z;
+    if (Math.abs(dx) > 4) a.face(Math.sign(dx), 0); else if (Math.abs(dz) > 4) a.face(0, Math.sign(dz));
+    a.play(run ? 'run' : 'walk', true);
+    const dist = Math.hypot(dx, dz * 1.5);
+    this.tweens.killTweensOf(a);
+    return new Promise((r) => this.tweens.add({
+      targets: a, x, z: tz, duration: dist * (run ? 2.3 : 4.2) + 120,
+      onUpdate: () => { if (a.sprite.active) a.sync(); },
+      onComplete: () => {
+        if (npc) npc.busy = false;
+        if (!a.sprite.active) { r(); return; } // despawned while walking
+        a.play('idle'); a.sync(); if (a === this.player) this.trail = []; r();
+      },
+    }));
+  }
+
+  /** Single player: every partner who has joined steps out for the scene (only the active one follows normally). */
+  gather(on: boolean): void {
+    if (G.mode !== 'single' || !this.player) return;
+    if (on) {
+      if (this.gathered.length) return;
+      const ids = (G.state.partners.unlocked as CharId[]).filter((id) => id !== G.state.partners.active && id !== 'mametchi' && !G.cond(`away:${id}`));
+      ids.forEach((id, i) => {
+        // stand a little behind the hero (further back = not hidden by the dialogue box)
+        const x = this.player.x - (this.partner ? 120 : 70) - Math.floor(i / 2) * 64 + (i % 2) * 30;
+        const z = clamp(Math.min(this.player.z, 120) - 40 - (i % 2) * 34, 10, DEPTH - 10);
+        this.spawnActor(id, id, x, z, false, 1, 'pop');
+        this.gathered.push(id);
+      });
+    } else {
+      for (const id of this.gathered) this.despawnActor(id, 'pop');
+      this.gathered = [];
+    }
+  }
+
+  private applySat(): void {
+    if (!this.colorFx) return;
+    this.colorFx.reset();
+    if (this.sat < -0.001) this.colorFx.saturate(this.sat);
+  }
+
+  color(sat: number, ms: number, wave: boolean): Promise<void> {
+    if (wave) this.colorWave(ms || 1600);
+    if (!this.colorFx || ms <= 0) { this.sat = sat; this.applySat(); return Promise.resolve(); }
+    return new Promise((r) => this.tweens.addCounter({
+      from: this.sat, to: sat, duration: ms, ease: 'Sine.inOut',
+      onUpdate: (tw) => { this.sat = tw.getValue() ?? sat; this.applySat(); },
+      onComplete: () => { this.sat = sat; this.applySat(); r(); },
+    }));
+  }
+
+  /** A bright band sweeps across the screen as the world gets its colours back. */
+  private colorWave(ms: number): void {
+    const key = 'colorband';
+    if (!this.textures.exists(key)) {
+      const [c, g] = canvas(260, 8);
+      const gr = g.createLinearGradient(0, 0, 260, 0);
+      gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,250,210,0.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 260, 8);
+      this.textures.addCanvas(key, c);
+    }
+    const w = this.scale.width;
+    const band = this.add.image(-200, GAME_H / 2, key).setScrollFactor(0).setDepth(8600).setDisplaySize(380, GAME_H).setBlendMode(Phaser.BlendModes.ADD);
+    const stars = this.add.particles(0, 0, 'p_star', { x: { min: -10, max: 10 }, y: { min: 0, max: GAME_H }, speedX: { min: -60, max: 60 }, speedY: { min: -80, max: 40 }, lifespan: 1100, frequency: 25, scale: { start: 1.1, end: 0 }, tint: [0xfff6a0, 0xff8ac4, 0x8ad8ff, 0x8aff9a] }).setScrollFactor(0).setDepth(8601);
+    audio.sfx('shard');
+    this.time.delayedCall(300, () => audio.sfx('magic'));
+    this.tweens.add({
+      targets: band, x: w + 200, duration: ms, ease: 'Sine.inOut',
+      onUpdate: () => { stars.setPosition(band.x, 0); },
+      onComplete: () => { band.destroy(); stars.stop(); this.time.delayedCall(1200, () => stars.destroy()); },
+    });
+  }
+
+  bounceActor(actor: string, n: number): Promise<void> {
+    const a = this.actorOf(actor);
+    if (!a) return Promise.resolve();
+    const o = { y: 0 };
+    return new Promise((r) => this.tweens.add({
+      targets: o, y: 34, yoyo: true, repeat: Math.max(0, n - 1), duration: 150, ease: 'Quad.out',
+      onUpdate: () => { a.y = o.y; a.sync(); }, onComplete: () => { a.y = 0; a.sync(); r(); },
+    }));
+  }
+
+  shiverActor(actor: string, ms: number): Promise<void> {
+    const a = this.actorOf(actor);
+    if (!a) return Promise.resolve();
+    const x0 = a.x;
+    return new Promise((r) => this.tweens.add({
+      targets: a, x: x0 + 5, yoyo: true, repeat: Math.max(1, Math.floor(ms / 80)), duration: 40,
+      onUpdate: () => a.sync(), onComplete: () => { a.x = x0; a.sync(); r(); },
+    }));
+  }
+
+  async interlude(id: string): Promise<void> {
+    const def = INTERLUDES[id];
+    if (!def) return;
+    hud.setVisible(false);
+    this.broadcastFx('stage', { kind: 'start', data: { id } });
+    const st = await this.openStage(id, false);
+    try {
+      await runNested(def.script, st);
+    } finally {
+      st.finish();
+      this.stage = null;
+      this.broadcastFx('stage', { kind: 'end' });
+    }
+  }
+
+  private openStage(id: string, mirror: boolean): Promise<StageScene> {
+    return new Promise((resolve) => {
+      const sc = this.scene.get('Stage') as StageScene;
+      sc.events.once(Phaser.Scenes.Events.CREATE, () => resolve(sc));
+      this.stage = sc;
+      this.scene.launch('Stage', { id, mirror, chapter: this.chapter });
+    });
+  }
+
+  private remoteStage(kind: string, data: any): void {
+    if (kind === 'start') { void this.openStage(data.id, true); hud.setVisible(false); }
+    else if (kind === 'end') { this.stage?.finish(); this.stage = null; }
+    else if (kind === 'fx') this.stage?.applyRemoteFx(data.kind, data.data);
+  }
+
+  startChase(id: string): void {
+    this.broadcastFx('chase', id);
+    this.fp.startChase(id);
+  }
+
+  async minigame(id: string): Promise<void> {
+    this.broadcastFx('minigame', id);
+    hud.setVisible(false);
+    await playMinigame(this, id);
+    hud.setVisible(!cinema.active);
+  }
+
+  /** Single player: switch the active partner (R / tap the partner card). */
+  cyclePartner(): void {
+    if (G.mode !== 'single') return;
+    const list = (G.state.partners.unlocked as CharId[]).filter((id) => !G.cond(`away:${id}`));
+    if (list.length < 2) { toast(list.length ? '目前只有一位夥伴。' : '還沒有夥伴。', 'info', 1200); return; }
+    const i = list.indexOf(G.state.partners.active as CharId);
+    const next = list[(i + 1) % list.length];
+    G.dispatch({ a: 'setPartner', partner: next });
+    audio.sfx('join');
+    toast(`換成 ${CHARACTERS[next].name}！能力：${ABILITIES[next].name}`, 'good', 1500);
+  }
+
+  areaRight(): number { return this.area.x1; }
+
+  fullWidth(): number {
+    return Math.max(this.chapter.width, ...(this.chapter.rooms ?? []).map((r) => r.x + r.w));
+  }
+
+  /** Main map or one of the side rooms: camera bounds and walking limits follow the player. */
+  private updateArea(force = false): void {
+    const x = this.player.x;
+    const room = this.chapter.rooms?.find((r) => x >= r.x && x <= r.x + r.w);
+    const a = room ? { x0: room.x, x1: room.x + room.w, room } : { x0: 0, x1: this.chapter.width };
+    if (!force && a.x0 === this.area.x0 && a.x1 === this.area.x1) return;
+    this.area = a;
+    this.cameras.main.setBounds(a.x0, 0, a.x1 - a.x0, GAME_H);
+    if (room && !force) toast(`進入：${room.name}`, 'info', 1400);
+  }
+
+  revealChestsNear(x: number, r: number): number {
+    let n = 0;
+    for (const c of this.chests) {
+      if (c.revealed || !c.def.hidden || Math.abs(c.def.x - x) > r) continue;
+      c.revealed = true;
+      this.refreshChest(c);
+      c.img.setScale(0.1);
+      this.tweens.add({ targets: c.img, scale: depthScale(c.def.z) * 0.85, duration: 400, ease: 'Back.out' });
+      this.paperBurst(c.def.x, zToY(c.def.z) - 50, 0xfff6a0, 12);
+      n++;
+    }
+    if (n) audio.sfx('item');
+    return n;
+  }
+
+  /** Kuchipatchi swallowed a small field enemy: it counts as beaten. */
+  eatEnemy(id: string): void {
+    const e = this.enemies.find((x) => x.id === id);
+    if (!e) return;
+    e.alive = false;
+    const def = ENEMIES[e.enemy];
+    const exp = Math.max(1, Math.round(def.exp * e.party.length * 0.6));
+    if (G.mode === 'multi') G.dispatch({ a: 'flag', k: `defeated:${e.id}`, v: true });
+    else { G.dispatch({ a: 'exp', n: exp }); G.dispatch({ a: 'coins', n: def.coins }); }
+    toast(`庫奇帕奇一口吞掉了 ${def.name}！（EXP +${exp}）`, 'good', 1600);
+  }
+
+  /** Player asked to use an ability spot (confirm near it, or the ability button). */
+  async tryAbilitySpot(id: string): Promise<void> {
+    const o = this.objects.find((x) => x.def.id === id);
+    if (!o || o.open || !o.def.need) return;
+    const need = o.def.need;
+    if (G.mode === 'single') {
+      if (!G.state.partners.unlocked.includes(need) || G.cond(`away:${need}`)) {
+        audio.sfx('error');
+        toast(G.cond(`away:${need}`) ? `${CHARACTERS[need].name}被帶走了……先去救出大家吧！` : `這裡需要${FieldPlay.needText(need)}。先繼續冒險吧！`, 'warn', 2000);
+        return;
+      }
+      if (G.state.partners.active !== need) {
+        G.dispatch({ a: 'setPartner', partner: need });
+        await new Promise((r) => this.time.delayedCall(250, r));
+      }
+      await this.interact('ability', id, G.localMemberKey(), { who: need });
+    } else if (!G.isAuthority) worldNet.requestInteract('ability', id, { who: G.localChar });
+    else await this.interact('ability', id, G.localMemberKey(), { who: G.localChar });
+  }
+
+  private async abilitySpot(id: string, _who?: string): Promise<void> {
+    const o = this.objects.find((x) => x.def.id === id);
+    if (!o || o.open || !o.def.need) return;
+    const d = o.def;
+    const need = d.need!;
+    const say: Record<CharId, string> = {
+      kuchipatchi: '交給我吧！大口吸——啊嗯！', memetchi: '來～剛烤好的蛋糕，香香的喔！', mimitchi: '噓……我聽到了！就在這裡！',
+      violetchi: '灰灰的輪廓……讓我把顏色畫回去！', oyajitchi: '星之燈啊，照亮孩子們的路吧。', gozarutchi: '泡泡忍術・浮之卷！',
+      maskutchi: '正義的變裝，啟動！', mametchi: '感應器，掃描！',
+    };
+    const doer = G.mode === 'single' ? 'partner' : 'hero';
+    await this.runStory([
+      { do: 'cinema', on: true },
+      { do: 'pan', x: d.x - 80, ms: 500 },
+      { who: need, text: say[need], face: 'determined' },
+      { do: 'walk', actor: doer, x: d.x - 110, z: d.look === 'bear' || d.look === 'spot' ? d.z : undefined },
+      { do: 'fx', name: `ab_${need}`, x: d.x },
+      { do: 'flag', key: d.flag ?? `ab:${d.id}`, value: true },
+      { do: 'wait', ms: 500 },
+      ...(d.script ?? []),
+      { do: 'follow', ms: 500 },
+    ]);
+  }
+
+  /** Small local ability effects (from the ability button). */
+  abilityFx(name: string): void {
+    const p = this.partner ?? this.player;
+    const x = p.x, y = zToY(p.z) - 70;
+    const tint: Record<string, number> = { suck: 0xffd08a, listen: 0x9fd8ff, paint: 0xb88cff, light: 0xfff6a0 };
+    const tex = name === 'listen' ? 'p_star' : name === 'light' ? 'p_star' : 'p_paper';
+    const pe = this.add.particles(x, y, tex, {
+      speed: name === 'suck' ? { min: -260, max: -120 } : { min: 80, max: 260 }, lifespan: 700, scale: { start: 1, end: 0 },
+      tint: tint[name] ?? 0xffffff, emitting: false,
+    }).setDepth(9000);
+    pe.explode(name === 'light' ? 30 : 18);
+    if (name === 'listen') for (let i = 0; i < 3; i++) {
+      const ring = this.add.circle(x, y, 20, 0, 0).setStrokeStyle(4, 0x9fd8ff).setDepth(9000);
+      this.tweens.add({ targets: ring, radius: 360, alpha: 0, delay: i * 220, duration: 900, onComplete: () => ring.destroy() });
+    }
+    if (name === 'light') { const glow = this.add.image(x, y, 'p_warm').setScale(1).setBlendMode(Phaser.BlendModes.ADD).setDepth(8990); this.tweens.add({ targets: glow, scale: 9, alpha: 0, duration: 1200, onComplete: () => glow.destroy() }); }
+    this.time.delayedCall(900, () => pe.destroy());
   }
 
   /** Off-screen events (a gate opening) are shown with a short camera pan. */
@@ -1514,7 +2067,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   }
 
   setActorVisible(actor: string, v: boolean): void {
-    const a = this.npcs.find((n) => n.def.id === actor)?.actor;
+    const a = this.actorOf(actor);
     if (a) { a.visible = v; a.sync(); }
   }
 
@@ -1550,6 +2103,20 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       case 'banner': cinema.flashBanner(data.title, data.sub ?? ''); break;
       case 'fx': void this.fx(data.name, data.actor, data.x); break;
       case 'item': toast(`${G.local?.playerName ?? ''} 取得 ${ITEMS[data]?.name ?? data}`, 'good'); break;
+      case 'walk': void this.walkActor(data.actor, data.x, data.z, !!data.run); break;
+      case 'place': this.placeActor(data.actor, data.x, data.z); break;
+      case 'face': this.faceActor(data.actor, data.dir); break;
+      case 'spawn': this.spawnActor(data.actor, data.look, data.x, data.z ?? 130, data.dark, data.dir, data.fx); break;
+      case 'despawn': this.despawnActor(data.actor, data.fx); break;
+      case 'visible': this.setActorVisible(data.actor, !!data.v); break;
+      case 'bounce': void this.bounceActor(data.actor, data.n ?? 2); break;
+      case 'shiver': void this.shiverActor(data.actor, data.ms ?? 700); break;
+      case 'card': void cinema.nameCard(data.title, data.sub, data.img, data.color); break;
+      case 'book': void playBook(data, this.chapter); break;
+      case 'color': void this.color(data.sat, data.ms, !!data.wave); break;
+      case 'chase': this.fp.startChase(data); break;
+      case 'minigame': hud.setVisible(false); void playMinigame(this, data).then(() => hud.setVisible(!cinema.active)); break;
+      case 'stage': this.remoteStage(data.kind, data.data); break;
     }
   }
 

@@ -12,7 +12,7 @@ const PC: Page[] = [
   { pic: 'pc-action', title: '跳躍與鎚子', text: 'Space 跳躍，可以跳過小水溝、踩敵人先制攻擊。J 或 X 揮鎚子，能敲碎裂開的方塊。' },
   { pic: 'pc-talk', title: '調查與對話', text: '靠近角色、寶箱或告示牌，頭上出現泡泡時按 Enter（或 E）就能對話、打開寶箱。' },
   { pic: 'pc-battle', title: '戰鬥的按鍵時機', text: '攻擊和防禦時都會出現光圈。光圈縮到中間的瞬間按下 Enter，就能打出更多傷害或擋下攻擊！' },
-  { pic: 'pc-menu', title: '選單與道具', text: 'Esc 打開選單：背包、角色、任務、地圖和存檔。Q 可以快速使用回復道具。' },
+  { pic: 'pc-menu', title: '選單、道具與夥伴', text: 'Esc 打開選單：背包、角色、任務、地圖和存檔。Q 快速使用回復道具。有夥伴之後，C 使用夥伴能力、R 換夥伴。' },
 ];
 
 const MOBILE: Page[] = [
@@ -20,7 +20,7 @@ const MOBILE: Page[] = [
   { pic: 'mb-action', title: '跳躍與鎚子', text: '右下角 A 跳躍、B 揮鎚子。跳到敵人頭上或用鎚子打到敵人，戰鬥會先制攻擊。' },
   { pic: 'mb-talk', title: '調查與對話', text: '靠近角色或寶箱時按 OK，或直接點角色頭上的泡泡。對話時點對話框翻頁。' },
   { pic: 'mb-battle', title: '戰鬥的點擊時機', text: '戰鬥指令直接點選單。出現光圈時，在光圈縮到中間的瞬間點一下畫面，攻擊更痛、防禦更穩！' },
-  { pic: 'mb-menu', title: '選單與道具', text: '右上角的按鈕打開選單（背包、任務、存檔）。上方的道具欄點一下就能使用回復道具。' },
+  { pic: 'mb-menu', title: '選單、道具與夥伴', text: '右上角的按鈕打開選單。下方的道具欄點一下就能使用回復道具。有夥伴之後，按右下的 C 使用夥伴能力，點左上角的夥伴頭像換人。' },
 ];
 
 export function openTutorial(): Promise<void> {

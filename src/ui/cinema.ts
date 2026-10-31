@@ -58,6 +58,22 @@ class Cinema {
     this.cap?.classList.remove('show');
   }
 
+  /**
+   * Paper-style name card that slides in from the side (boss entrances, new partners, henchmen).
+   * Resolves once it has been read.
+   */
+  async nameCard(title: string, sub = '', img: string | null = null, color = '#e8203a', ms = 2300): Promise<void> {
+    const card = h('div', { class: 'name-card', style: { '--nc': color } },
+      img ? h('div', { class: 'nc-pic' }, h('img', { src: img, alt: '' })) : null,
+      h('div', { class: 'nc-text' }, sub ? h('div', { class: 'nc-sub' }, sub) : null, h('div', { class: 'nc-title' }, title)));
+    document.getElementById('fx-overlay')!.append(card);
+    requestAnimationFrame(() => card.classList.add('in'));
+    await wait(ms);
+    card.classList.add('out');
+    await wait(450);
+    card.remove();
+  }
+
   /** Big stamped banner ("BOSS", "夥伴加入", …). Does not block. */
   flashBanner(title: string, sub = '', ms = 2200): void {
     this.ensure();

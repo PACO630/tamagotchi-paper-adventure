@@ -85,6 +85,11 @@ class DialogueBox {
     this.advanceResolve = null;
   }
 
+  /** Forget a skip request (a nested cutscene starts fresh). */
+  endSkip(): void {
+    this.skipRequested = false;
+  }
+
   externalSkip(): void {
     this.skipRequested = true;
     this.finishTyping();

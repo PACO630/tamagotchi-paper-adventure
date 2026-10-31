@@ -1,4 +1,4 @@
-import type { EnemyDef, EnemyMove } from './types';
+import type { BattleTalk, EnemyDef, EnemyMove } from './types';
 
 const atk = (name: string, power = 0, weight = 3, extra: Partial<EnemyMove> = {}): EnemyMove =>
   ({ id: name, name, kind: 'attack', power, target: 'one', weight, ...extra });
@@ -130,5 +130,55 @@ const list: EnemyDef[] = [
     ],
     mechanic: 'final', art: { body: 'star', color: '#ffffc0', accent: '#4000c0', size: 2.1 } },
 ];
+
+/* ---------- The grey brothers (chapter 4 control room) ---------- */
+list.push(
+  { id: 'dahui', name: '大灰', desc: '灰灰兄弟的哥哥。力氣很大、腦筋很慢，最喜歡點心。', hp: 120, atk: 8, def: 2, exp: 260, coins: 60, traits: [],
+    moves: [atk('灰灰肚子撞', 1, 4), { id: 'snack', name: '吃點心', kind: 'heal', power: 14, target: 'one', weight: 1, msg: '大灰拿出點心大口吃掉了！' }],
+    art: { body: 'blob', color: '#a8a8b4', accent: '#5a5a6a', npc: { color: '#a8a8b4', accent: '#5a5a6a', ears: 'round', hat: 'cap', size: 1.15 } } },
+  { id: 'xiaohui', name: '小灰', desc: '灰灰兄弟的弟弟。個子小、點子多，會用奇怪的發明。', hp: 70, atk: 7, def: 1, exp: 220, coins: 60, traits: ['flying'],
+    moves: [atk('灰灰彈弓', 0, 3), { id: 'grey_gas', name: '灰灰煙霧', kind: 'status', power: 0, target: 'all', weight: 2, status: { type: 'atkDown', turns: 2, chance: 0.6, amount: 1 } }],
+    art: { body: 'blob', color: '#c4c4cc', accent: '#7a5aa0', npc: { color: '#c4c4cc', accent: '#7a5aa0', ears: 'pointy', glasses: true, size: 0.82 } } },
+);
+
+/** Boss titles and what they say during the fight. */
+const BOSS_LINES: Record<string, { epithet: string; intro?: BattleTalk[]; phases?: BattleTalk[][] }> = {
+  chaos_guardian: { epithet: '被碎片附身的守護石像',
+    intro: [{ who: 'chaos_guardian', text: '……守護……停止……村莊……停止……', face: 'angry' }],
+    phases: [[{ who: 'kuchipatchi', text: '它的眼睛變紅了！麻美吉，小心！', face: 'worried' }]] },
+  candy_tree_king: { epithet: '糖果森林暴走樹王',
+    intro: [{ who: 'candy_tree_king', text: '甜……更多的甜……把你們也變成糖！', face: 'angry' }],
+    phases: [[{ who: 'memetchi', text: '樹王！你記得我做的蛋糕嗎！？快醒過來！', face: 'sad' }]] },
+  storm_dragon: { epithet: '天空神殿的守護龍',
+    intro: [{ who: 'storm_dragon', text: '吼——！不准再靠近一步！', face: 'angry' }, { who: 'mimitchi', text: '它在空中……用跳的踩它！', face: 'determined' }],
+    phases: [[{ who: 'storm_dragon', text: '為什麼……你們還站得起來！？', face: 'angry' }]] },
+  mega_robot: { epithet: '失控的超級機器人 M-1',
+    intro: [{ who: 'mega_robot', text: '指令確認：「讓工廠永遠停止」。執行。', face: 'angry' }],
+    phases: [[{ who: 'maskutchi', text: '裝甲裂開了！就是現在，正義的一擊！', face: 'determined' }], [{ who: 'mega_robot', text: '警告……我、不想……爆炸……', face: 'sad' }]] },
+  abyss_guardian: { epithet: '沉睡在遺跡的古代巨魚',
+    intro: [{ who: 'abyss_guardian', text: '潮水……不准再流動……', face: 'angry' }],
+    phases: [[{ who: 'gozarutchi', text: '主公，潮水變強了！在下會守住後面！', face: 'determined' }]] },
+  castle_knight: { epithet: '忘記誓言的城堡騎士',
+    intro: [{ who: 'castle_knight', text: '闖入者……我必須……守護……什麼來著……', face: 'angry' }],
+    phases: [[{ who: 'violetchi', text: '鏡子裡的是假的！先打倒分身！', face: 'determined' }]] },
+  dark_mametchi: { epithet: '麻美吉心中的不安',
+    intro: [{ who: 'dark_mametchi', text: '來吧，我。讓我看看你有多害怕。', face: 'angry' }],
+    phases: [[{ who: 'dark_mametchi', text: '為什麼……為什麼你一直往前走！？', face: 'hurt' }]] },
+  eternatchi: { epithet: '星之心過去的守護者',
+    intro: [{ who: 'eternatchi', text: '孩子們，這是最後一次了。讓一切……永遠停在這裡吧。', face: 'sad' }],
+    phases: [
+      [{ who: 'eternatchi', text: '改變只會帶來痛苦！我已經聽夠了！', face: 'angry' }, { who: 'oyajitchi', text: '永恆吉……你一直都一個人在聽，對吧。', face: 'sad' }],
+      [{ who: 'hero', text: '大家，一起上！把我們的心傳給他！', face: 'determined' }],
+    ] },
+  dahui: { epithet: '灰灰兄弟',
+    intro: [{ who: 'xiaohui', text: '嘿嘿嘿，這次換我們親自出馬！', face: 'happy' }, { who: 'dahui', text: '打完可以吃點心嗎？', face: 'normal' }] },
+};
+for (const e of list) {
+  const b = BOSS_LINES[e.id];
+  if (!b) continue;
+  e.epithet = b.epithet;
+  if (b.intro) e.intro = b.intro;
+  b.phases?.forEach((talk, i) => { if (e.phases?.[i]) e.phases[i].talk = talk; });
+}
 
 export const ENEMIES: Record<string, EnemyDef> = Object.fromEntries(list.map((e) => [e.id, e]));

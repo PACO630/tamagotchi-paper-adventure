@@ -31,17 +31,25 @@ const list: QuestDef[] = [
   { id: 's5_pearls', chapter: 5, type: 'side', title: '彩虹珍珠', desc: '人魚歌手想要 3 顆彩虹珍珠做項鍊。', objective: { kind: 'collect', item: 'pearl', count: 3 }, takeItems: true, reward: { exp: 300, items: [{ id: 'elixir', qty: 2 }] } },
   // Chapter 6
   { id: 'q6_mirror', chapter: 6, type: 'main', title: '鏡子迷宮', desc: '穿過鏡子迷宮。有些門會把你送回原點。', objective: { kind: 'flag', flag: 'ch6_mirror_done' }, reward: { exp: 350 } },
-  { id: 'q6_memory', chapter: 6, type: 'main', title: '記憶解謎', desc: '依照歷史書上的順序點亮記憶燭台：星→月→花→心。', objective: { kind: 'flag', flag: 'ch6_memory_done' }, reward: { exp: 400 } },
+  { id: 'q6_memory', chapter: 6, type: 'main', title: '記憶解謎', desc: '點亮記憶燭台。正確的順序藏在畫廊裡畫像們說的故事中。', objective: { kind: 'flag', flag: 'ch6_memory_done' }, reward: { exp: 400 } },
   { id: 'q6_boss', chapter: 6, type: 'main', title: '失憶的騎士', desc: '王座廳的騎士忘記了自己是誰。', objective: { kind: 'flag', flag: 'boss6' } },
   { id: 's6_candles', chapter: 6, type: 'side', title: '幽靈的請求', desc: '友善的幽靈想要 2 根記憶蠟燭，好想起自己的名字。', objective: { kind: 'collect', item: 'candle', count: 2 }, takeItems: true, reward: { exp: 400, items: [{ id: 'b_heart', qty: 1 }] } },
   // Chapter 7
   { id: 'q7_mirror_friends', chapter: 7, type: 'main', title: '黑暗中的夥伴', desc: '打倒黑暗異世界中的夥伴影子。', objective: { kind: 'defeat', enemy: 'dark_kuchi', count: 1 }, reward: { exp: 500 } },
-  { id: 'q7_crystals', chapter: 7, type: 'main', title: '暗晶之路', desc: '收集 3 個暗晶，點亮通往深處的道路。', objective: { kind: 'collect', item: 'dark_crystal', count: 3 }, takeItems: true, reward: { exp: 600 } },
+  { id: 'q7_crystals', chapter: 7, type: 'main', title: '光與影的機關', desc: '影子麻美吉會反方向模仿你的動作。讓「光」和「影」的踏板同時亮起來！（紫色柵欄只擋得住影子）', objective: { kind: 'flag', flag: 'ch7_mirror' }, reward: { exp: 700 } },
   { id: 'q7_boss', chapter: 7, type: 'main', title: '另一個自己', desc: '道路盡頭有一個和麻美吉一模一樣的影子。', objective: { kind: 'flag', flag: 'boss7' } },
-  { id: 's7_lost', chapter: 7, type: 'side', title: '迷失的光', desc: '幫迷失的小光點找到回家的路。', objective: { kind: 'flag', flag: 's7_light_home' }, reward: { exp: 600, items: [{ id: 'elixir', qty: 1 }, { id: 'star_candy', qty: 3 }] } },
+  { id: 's7_lost', chapter: 7, type: 'side', title: '小光的心願', desc: '陪著小光走到黑暗的盡頭。她說，她在找一個很重要的人。', objective: { kind: 'flag', flag: 's7_light_home' }, reward: { exp: 600, items: [{ id: 'elixir', qty: 1 }, { id: 'star_candy', qty: 3 }] } },
   // Chapter 8
   { id: 'q8_seals', chapter: 8, type: 'main', title: '三道星之封印', desc: '解開神殿的三道星之封印。', objective: { kind: 'flags', flags: ['ch8_seal1', 'ch8_seal2', 'ch8_seal3'] }, reward: { exp: 800 } },
   { id: 'q8_final', chapter: 8, type: 'main', title: '星之心的真相', desc: '前往神殿最深處，面對永恆吉。', objective: { kind: 'flag', flag: 'boss8' } },
+  // v2 story quests
+  { id: 'q2_chase', chapter: 2, type: 'main', title: '口香糖大追擊', desc: '灰灰兄弟推來了巨大的口香糖球！一路往右跑，別被追上！', objective: { kind: 'flag', flag: 'ch2_chase_done' }, reward: { exp: 70 } },
+  { id: 'q3_listen', chapter: 3, type: 'main', title: '看不見的雲', desc: '神殿前的裂縫上有看不見的雲朵。讓咪咪吉用「順風耳」聽出它們在哪裡（按 C）。', objective: { kind: 'flag', flag: 'ch3_crossed' }, reward: { exp: 100 } },
+  { id: 'q4_bros', chapter: 4, type: 'main', title: '控制室的灰灰兄弟', desc: '灰灰兄弟佔領了中央控制室，把生產線弄亂了。打倒他們，修好生產線！', objective: { kind: 'flags', flags: ['ch4_bros', 'ch4_line_fixed'] }, reward: { exp: 300, coins: 50 } },
+  { id: 'q5_escape', chapter: 5, type: 'main', title: '黑暗中的大嘴巴', desc: '巨大的鮟鱇魚追上來了！往右逃！', objective: { kind: 'flag', flag: 'ch5_chase_done' }, reward: { exp: 300 } },
+  { id: 'q6_clues', chapter: 6, type: 'main', title: '會說話的畫像', desc: '畫廊裡的三幅畫像知道記憶燭台的順序。去聽聽他們的故事。', objective: { kind: 'flags', flags: ['ch6_clue1', 'ch6_clue2', 'ch6_clue3'] }, reward: { exp: 350 } },
+  { id: 'q6_quiz', chapter: 6, type: 'main', title: '記憶之門的提問', desc: '記憶之門會問你三個問題。回想一路上看到的回憶吧！', objective: { kind: 'flag', flag: 'ch6_quiz_done' }, reward: { exp: 400 } },
+  { id: 'q7_rescue', chapter: 7, type: 'main', title: '被帶走的夥伴', desc: '灰灰兄弟把夥伴們帶走了。和老爺爺吉一起，把大家救回來！', objective: { kind: 'flags', flags: ['ch7_free1', 'ch7_free2', 'ch7_free3'] }, reward: { exp: 800 } },
 ];
 
 export const QUESTS: Record<string, QuestDef> = Object.fromEntries(list.map((q) => [q.id, q]));

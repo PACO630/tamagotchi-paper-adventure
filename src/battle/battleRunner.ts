@@ -123,6 +123,7 @@ export async function runBattle(req: BattleRequest): Promise<BattleOutcome> {
     },
   };
   core = new BattleCore(setup, io);
+  if (import.meta.env.DEV) (window as any).__battle = core;
   let outcome: BattleOutcome;
   try {
     outcome = await core.run();

@@ -47,6 +47,12 @@ export function drawEnemy(d: Doodle, art: EnemyArt, frame: EnemyFrame, spiky: bo
   ctx.save();
   if (frame === 'hurt') { ctx.translate(64, 120); ctx.scale(1.12, 0.88); ctx.translate(-64, -120); }
 
+  if (art.npc) {
+    // henchmen and other "people" enemies use the character painter
+    drawCharacter(d, { npc: art.npc }, basePose({ facing: 'front', expr: mood === 'hurt' ? 'hurt' : mood === 'angry' ? 'angry' : 'normal', bob, lean: lunge }));
+    ctx.restore();
+    return;
+  }
   if (art.mimic) {
     drawCharacter(d, { charId: art.mimic, dark: true }, basePose({
       facing: 'front', expr: mood === 'hurt' ? 'hurt' : 'angry', bob, lean: lunge,

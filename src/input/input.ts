@@ -1,10 +1,10 @@
 /** Unified keyboard + touch input. Game code reads axes/buttons; DOM UI subscribes to presses. */
-export type Btn = 'jump' | 'attack' | 'confirm' | 'cancel' | 'item' | 'run' | 'up' | 'down' | 'left' | 'right' | 'menu';
+export type Btn = 'jump' | 'attack' | 'confirm' | 'cancel' | 'item' | 'run' | 'up' | 'down' | 'left' | 'right' | 'menu' | 'ability' | 'partner';
 
 const KEYMAP: Record<string, Btn[]> = {
   KeyW: ['up'], ArrowUp: ['up'], KeyS: ['down'], ArrowDown: ['down'], KeyA: ['left'], ArrowLeft: ['left'], KeyD: ['right'], ArrowRight: ['right'],
   Space: ['jump'], KeyJ: ['attack'], KeyX: ['attack'], Enter: ['confirm'], NumpadEnter: ['confirm'], KeyE: ['confirm'], KeyZ: ['confirm'],
-  Escape: ['cancel', 'menu'], Backspace: ['cancel'], KeyQ: ['item'], ShiftLeft: ['run'], ShiftRight: ['run'], Tab: ['menu'],
+  Escape: ['cancel', 'menu'], Backspace: ['cancel'], KeyQ: ['item'], KeyC: ['ability'], KeyK: ['ability'], KeyR: ['partner'], ShiftLeft: ['run'], ShiftRight: ['run'], Tab: ['menu'],
 };
 
 type PressListener = (b: Btn) => boolean | void;

@@ -19,6 +19,8 @@ export interface CharDef {
   skills: { id: string; level: number }[];
   color: string;
   fieldAbility: string;
+  /** Field ability used with the ability button (C / K) while this character is the active partner. */
+  ability?: { name: string; desc: string };
 }
 
 export type StatusType =
@@ -90,9 +92,12 @@ export type EnemyBody =
   | 'blob' | 'mushroom' | 'bug' | 'bird' | 'candy' | 'tree' | 'cloud' | 'dragon' | 'robot'
   | 'fish' | 'jelly' | 'crab' | 'ghost' | 'knight' | 'mirror' | 'guardian' | 'eye' | 'golem' | 'star';
 
-export interface EnemyArt { body: EnemyBody; color: string; accent: string; size?: number; dark?: boolean; mimic?: CharId }
+export interface EnemyArt { body: EnemyBody; color: string; accent: string; size?: number; dark?: boolean; mimic?: CharId; npc?: NpcLook }
 
-export interface BossPhase { hpBelow: number; msg: string; addTraits?: Trait[]; removeTraits?: Trait[]; def?: number; atk?: number; mechanic?: string }
+export interface BossPhase { hpBelow: number; msg: string; talk?: BattleTalk[]; addTraits?: Trait[]; removeTraits?: Trait[]; def?: number; atk?: number; mechanic?: string }
+
+/** A line of dialogue shown during a battle (auto-advancing speech bubble with portrait). */
+export interface BattleTalk { who: string; text: string; face?: Expr }
 
 export interface EnemyDef {
   id: string;
@@ -109,6 +114,10 @@ export interface EnemyDef {
   art: EnemyArt;
   phases?: BossPhase[];
   mechanic?: string;
+  /** Boss lines at the start of the battle. */
+  intro?: BattleTalk[];
+  /** Name-card subtitle when the boss appears in the field. */
+  epithet?: string;
 }
 
 export type QuestObjective =
@@ -167,6 +176,19 @@ export type ScriptStep =
   | { do: 'banner'; title: string; sub?: string }
   | { do: 'fx'; name: string; actor?: string; x?: number }
   | { do: 'opening' }
+  // ---- staging (v2) ----
+  | { do: 'spawn'; actor: string; look: string | NpcLook; x: number; z?: number; dark?: boolean; dir?: 1 | -1; fx?: string }
+  | { do: 'despawn'; actor: string; fx?: string }
+  | { do: 'walk'; actor: string; x: number; z?: number; run?: boolean; nowait?: boolean }
+  | { do: 'gather'; on: boolean }
+  | { do: 'card'; title: string; sub?: string; enemy?: string; look?: string; color?: string }
+  | { do: 'book'; pages: BookPage[] }
+  | { do: 'color'; sat: number; ms?: number; wave?: boolean }
+  | { do: 'interlude'; id: string }
+  | { do: 'chase'; id: string }
+  | { do: 'minigame'; id: string }
+  | { do: 'bounce'; actor: string; n?: number }
+  | { do: 'shiver'; actor: string; ms?: number }
   | { choice: { text: string; flag?: [string, boolean | number | string]; goto?: string }[]; who?: string; prompt?: string }
   | { label: string }
   | { goto: string }
@@ -174,6 +196,16 @@ export type ScriptStep =
   | { end: true };
 
 export type Script = ScriptStep[];
+
+/** One page of a picture-book flashback: a painted backdrop, a few characters and a caption. */
+export interface BookPage {
+  bg: 'night' | 'day' | 'temple' | 'storm' | 'sunset' | 'dark' | 'village' | 'sea' | 'castle' | 'space';
+  chars?: { look: string; x: number; y?: number; face?: Expr; s?: number; dark?: boolean; flip?: boolean }[];
+  /** extra painted things: heart, star, shards, tear, crown, crack, light */
+  deco?: { t: string; x: number; y: number; s?: number }[];
+  text: string;
+  sepia?: boolean;
+}
 
 /** A condition string: "flag", "!flag", "a&b", "quest:id", "done:id", "item:id" */
 export type Cond = string;
@@ -204,7 +236,7 @@ export interface NpcDef {
 export type PropLayer = 'far' | 'back' | 'mid' | 'front';
 export interface PropDef { t: string; x: number; z?: number; layer?: PropLayer; s?: number; flip?: boolean }
 
-export type ZoneType = 'pit' | 'wind' | 'conveyor' | 'current' | 'hazard' | 'dark' | 'heal' | 'slow';
+export type ZoneType = 'pit' | 'wind' | 'conveyor' | 'current' | 'hazard' | 'dark' | 'heal' | 'slow' | 'deep' | 'spotlight';
 export interface ZoneDef {
   type: ZoneType;
   x: number;
@@ -219,7 +251,13 @@ export interface ZoneDef {
   dmg?: number;
 }
 
-export interface PlatformDef { id: string; x: number; z: number; w: number; d: number; dx?: number; dz?: number; period?: number; look?: string }
+export interface PlatformDef {
+  id: string; x: number; z: number; w: number; d: number; dx?: number; dz?: number; period?: number; look?: string;
+  /** only exists while the condition holds (e.g. a painted bridge) */
+  showIf?: Cond;
+  /** invisible (and not solid) until revealed by a partner ability: 'listen' or 'light' */
+  secret?: 'listen' | 'light';
+}
 
 export interface ChestDef {
   id: string;
@@ -231,7 +269,7 @@ export interface ChestDef {
   showIf?: Cond;
 }
 
-export type ObjType = 'breakable' | 'switch' | 'gate' | 'sign' | 'savepoint' | 'shard' | 'door' | 'spring' | 'heal';
+export type ObjType = 'breakable' | 'switch' | 'gate' | 'sign' | 'savepoint' | 'shard' | 'door' | 'spring' | 'heal' | 'ability' | 'vent' | 'plate';
 export interface ObjDef {
   id: string;
   type: ObjType;
@@ -247,9 +285,31 @@ export interface ObjDef {
   w?: number;
   script?: Script;
   showIf?: Cond;
+  /** ability objects: which partner's field ability solves it */
+  need?: CharId;
+  /** plates: pressed by the hero or by the mirror shadow */
+  by?: 'hero' | 'shadow';
 }
 
-export interface FieldEnemyDef { id: string; enemy: string; party: string[]; x: number; z: number; range?: number; showIf?: Cond }
+/**
+ * Field enemy behaviour: patrol (default), chaser (spots you from far away and is fast),
+ * ambush (hides until you are close, then jumps out), sleeper (asleep unless you run nearby).
+ */
+export type EnemyAI = 'patrol' | 'chaser' | 'ambush' | 'sleeper';
+export interface FieldEnemyDef { id: string; enemy: string; party: string[]; x: number; z: number; range?: number; showIf?: Cond; ai?: EnemyAI; small?: boolean }
+
+/** A chase set piece: something big follows the party from x0 to x1. */
+export interface ChaseDef {
+  id: string; x0: number; x1: number; look: 'gumball' | 'angler' | 'shadow' | 'statue'; speed: number; flag: string;
+  /** once this holds, entering [x0, x1] (again) restarts the chase — e.g. after reloading a save */
+  armed?: Cond;
+}
+
+/** Mirror puzzle (chapter 7): a shadow mirrors the hero's horizontal moves inside [x0, x1]. */
+export interface MirrorDef { x0: number; x1: number; shadowStart: number; walls: number[]; flag: string; z: number }
+
+/** Side rooms: extra areas past the end of the main map, reached through doors. */
+export interface RoomDef { id: string; x: number; w: number; name: string }
 
 export interface TriggerDef { id: string; x: number; w?: number; script: Script; if?: Cond; once?: boolean; block?: boolean }
 
@@ -303,4 +363,9 @@ export interface ChapterDef {
   quests: string[];
   partner?: CharId;
   mapNodes: { name: string; x: number }[];
+  /** world saturation before the boss is beaten (-1 grey … 0 full colour) */
+  grey?: number;
+  chases?: ChaseDef[];
+  mirror?: MirrorDef;
+  rooms?: RoomDef[];
 }

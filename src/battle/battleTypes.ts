@@ -59,7 +59,8 @@ export type FxStep =
   | { t: 'spawn'; fighter: Fighter }
   | { t: 'shake' }
   | { t: 'sfx'; id: string }
-  | { t: 'wait'; ms: number };
+  | { t: 'wait'; ms: number }
+  | { t: 'talk'; who: string; text: string; face?: string; ms?: number };
 
 export interface BattleSetup {
   party: Fighter[];

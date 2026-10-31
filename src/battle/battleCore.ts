@@ -103,6 +103,8 @@ export class BattleCore {
   async run(): Promise<BattleOutcome> {
     this.io.sync(this);
     const intro: FxStep[] = [{ t: 'text', text: this.setup.boss ? `${this.enemies[0].name} 出現了！` : `${this.enemies.map((e) => e.name).join('、')} 出現了！`, ms: 900 }];
+    // bosses (and the grey brothers) have something to say before the fight
+    for (const e of this.enemies) for (const l of ENEMIES[e.enemyId!]?.intro ?? []) intro.push({ t: 'talk', who: l.who, text: l.text, face: l.face, ms: 2300 });
     await this.io.play(intro);
 
     if (this.setup.first === 'party' && this.setup.firstKind) {
@@ -610,7 +612,9 @@ export class BattleCore {
         while (e.phase < def.phases.length && e.hp <= e.maxHP * def.phases[e.phase].hpBelow) {
           const ph = def.phases[e.phase];
           e.phase++;
-          steps.push({ t: 'shake' }, { t: 'fx', name: 'phase', at: e.id }, { t: 'text', text: ph.msg, ms: 1600 });
+          steps.push({ t: 'shake' }, { t: 'fx', name: 'phase', at: e.id });
+          for (const l of ph.talk ?? []) steps.push({ t: 'talk', who: l.who, text: l.text, face: l.face, ms: 2300 });
+          steps.push({ t: 'text', text: ph.msg, ms: 1600 });
           if (ph.atk !== undefined) e.atk = ph.atk;
           if (ph.def !== undefined) e.def = ph.def;
           if (ph.addTraits) e.traits.push(...ph.addTraits);

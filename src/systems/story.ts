@@ -7,10 +7,11 @@ import type { DrawTarget } from '../art/characterArt';
 import { CHARACTERS } from '../data/characters';
 import { ENEMIES } from '../data/enemies';
 import { SPEAKERS } from '../data/chapters/helpers';
-import type { ChapterDef, CharId, Expr, Script, ScriptStep } from '../data/types';
+import type { ChapterDef, CharId, Expr, NpcLook, Script, ScriptStep } from '../data/types';
 import { dialogue, type Line } from '../ui/dialogueBox';
 import { audio } from './audio';
 import { cinema } from '../ui/cinema';
+import { playBook } from '../ui/storybook';
 
 export interface StoryHost {
   chapter: ChapterDef;
@@ -35,6 +36,17 @@ export interface StoryHost {
   faceActor(actor: string, dir: 1 | -1): void;
   fx(name: string, actor?: string, x?: number): Promise<void>;
   opening(): Promise<void>;
+  // staging v2 (optional so a minimal host can skip them)
+  spawnActor?(actor: string, look: string | NpcLook, x: number, z: number, dark?: boolean, dir?: 1 | -1, fx?: string): void;
+  despawnActor?(actor: string, fx?: string): void;
+  walkActor?(actor: string, x: number, z: number | undefined, run: boolean): Promise<void>;
+  gather?(on: boolean): void;
+  color?(sat: number, ms: number, wave: boolean): Promise<void>;
+  interlude?(id: string): Promise<void>;
+  startChase?(id: string): void;
+  minigame?(id: string): Promise<void>;
+  bounceActor?(actor: string, n: number): Promise<void>;
+  shiverActor?(actor: string, ms: number): Promise<void>;
   /** Multiplayer: mirror dialogue to clients. */
   broadcastDialogue?(kind: 'line' | 'adv' | 'choice' | 'pick' | 'end' | 'skip', data?: any): void;
   broadcastFx?(kind: string, data: any): void;
@@ -147,11 +159,36 @@ export async function runScript(script: Script, host: StoryHost): Promise<boolea
     dialogue.onAdvance = null;
     dialogue.onSkip = null;
     host.broadcastDialogue?.('end');
-    if (cinema.active) { host.cinema(false); host.broadcastFx?.('cinema', false); }
+    // always release the cutscene state (cinema may already have been switched off elsewhere,
+    // e.g. by a mini-game, which would otherwise leave the player locked)
+    if (cinema.active) host.broadcastFx?.('cinema', false);
+    host.cinema(false);
     void host.follow(0);
     running = false;
     fastForward = false;
   }
+}
+
+/**
+ * Runs a script inside the currently running one (interludes played from a chapter's outro).
+ * Skipping the outer cutscene does not skip the nested one.
+ */
+export async function runNested(script: Script, host: StoryHost): Promise<void> {
+  const ff0 = fastForward;
+  fastForward = false;
+  dialogue.endSkip();
+  try {
+    await exec(script, host, epoch);
+  } finally {
+    fastForward = ff0;
+  }
+}
+
+/** Card art for the `card` step: an enemy picture or a character portrait. */
+function cardImage(s: { enemy?: string; look?: string }, chapter: ChapterDef | null): string | null {
+  if (s.enemy) return speakerPortrait({ name: '', target: null, enemy: s.enemy, pitch: 1, party: false }, 'angry');
+  if (s.look) return speakerPortrait(resolveSpeaker(s.look, chapter), 'determined');
+  return null;
 }
 
 async function exec(steps: ScriptStep[], host: StoryHost, mine: number): Promise<void> {
@@ -215,10 +252,10 @@ async function exec(steps: ScriptStep[], host: StoryHost, mine: number): Promise
       }
       case 'follow': host.broadcastFx?.('follow', s.ms ?? 600); await host.follow(ff() ? 0 : s.ms ?? 600); break;
       case 'zoom': host.broadcastFx?.('zoom', { z: s.z, ms: s.ms ?? 800 }); await host.zoom(s.z, ff() ? 0 : s.ms ?? 800); break;
-      case 'place': host.placeActor(s.actor, s.x, s.z); break;
+      case 'place': host.broadcastFx?.('place', { actor: s.actor, x: s.x, z: s.z }); host.placeActor(s.actor, s.x, s.z); break;
       case 'jump': host.broadcastFx?.('jump', s.actor); if (!ff()) await host.jumpActor(s.actor); break;
       case 'anim': host.broadcastFx?.('anim', { actor: s.actor, anim: s.anim, ms: s.ms ?? 900 }); await host.animActor(s.actor, s.anim, ff() ? 0 : s.ms ?? 900); break;
-      case 'face': host.faceActor(s.actor, s.dir); break;
+      case 'face': host.broadcastFx?.('face', { actor: s.actor, dir: s.dir }); host.faceActor(s.actor, s.dir); break;
       case 'caption':
         host.broadcastFx?.('caption', { text: G.fmt(s.text), ms: s.ms ?? 2600 });
         if (!ff()) await cinema.caption(G.fmt(s.text), s.ms ?? 2600);
@@ -227,9 +264,45 @@ async function exec(steps: ScriptStep[], host: StoryHost, mine: number): Promise
       case 'fx': host.broadcastFx?.('fx', { name: s.name, actor: s.actor, x: s.x }); if (!ff()) await host.fx(s.name, s.actor, s.x); break;
       case 'opening': if (!ff()) await host.opening(); break;
       case 'emote': host.emote(s.actor, s.emote); host.broadcastFx?.('emote', { actor: s.actor, emote: s.emote }); break;
-      case 'move': await host.moveActor(s.actor, s.x, s.z); break;
-      case 'hide': host.setActorVisible(s.actor, false); break;
-      case 'show': host.setActorVisible(s.actor, true); break;
+      case 'move':
+        host.broadcastFx?.('walk', { actor: s.actor, x: s.x, z: s.z, run: false });
+        if (ff()) host.placeActor(s.actor, s.x, s.z); else await host.moveActor(s.actor, s.x, s.z);
+        break;
+      case 'walk': {
+        host.broadcastFx?.('walk', { actor: s.actor, x: s.x, z: s.z, run: !!s.run });
+        if (ff() || !host.walkActor) { host.placeActor(s.actor, s.x, s.z); break; }
+        const p = host.walkActor(s.actor, s.x, s.z, !!s.run);
+        if (!s.nowait) await p;
+        break;
+      }
+      case 'spawn':
+        host.broadcastFx?.('spawn', s);
+        host.spawnActor?.(s.actor, s.look, s.x, s.z ?? 130, s.dark, s.dir, ff() ? undefined : s.fx);
+        break;
+      case 'despawn': host.broadcastFx?.('despawn', s); host.despawnActor?.(s.actor, ff() ? undefined : s.fx); break;
+      case 'gather': host.broadcastFx?.('gather', s.on); host.gather?.(s.on); break;
+      case 'bounce': host.broadcastFx?.('bounce', s); if (!ff()) await host.bounceActor?.(s.actor, s.n ?? 2); break;
+      case 'shiver': host.broadcastFx?.('shiver', s); if (!ff()) await host.shiverActor?.(s.actor, s.ms ?? 700); break;
+      case 'card': {
+        const img = cardImage(s, host.chapter);
+        const data = { title: G.fmt(s.title), sub: s.sub ? G.fmt(s.sub) : '', img, color: s.color };
+        host.broadcastFx?.('card', data);
+        if (!ff()) await cinema.nameCard(data.title, data.sub, img, s.color);
+        break;
+      }
+      case 'book':
+        host.broadcastFx?.('book', s.pages);
+        if (!ff()) await playBook(s.pages, host.chapter);
+        break;
+      case 'color':
+        host.broadcastFx?.('color', { sat: s.sat, ms: s.ms ?? 1500, wave: !!s.wave });
+        await host.color?.(s.sat, ff() ? 0 : s.ms ?? 1500, !!s.wave && !ff());
+        break;
+      case 'interlude': if (host.interlude) await host.interlude(s.id); break;
+      case 'chase': host.startChase?.(s.id); break;
+      case 'minigame': if (host.minigame) await host.minigame(s.id); break;
+      case 'hide': host.broadcastFx?.('visible', { actor: s.actor, v: false }); host.setActorVisible(s.actor, false); break;
+      case 'show': host.broadcastFx?.('visible', { actor: s.actor, v: true }); host.setActorVisible(s.actor, true); break;
       case 'tint': host.tint(s.color); break;
       case 'save': host.save(); break;
       case 'battle': {

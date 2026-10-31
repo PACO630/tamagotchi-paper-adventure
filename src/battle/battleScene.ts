@@ -4,7 +4,9 @@ import { GAME_H, GAME_W, FONT } from '../core/config';
 import { charSheetKey, ensureEnemySheet, ensureSheet, ensureTheme } from '../art/textures';
 import { chapterByNum } from '../data/chapters';
 import { CHAPTERS } from '../data/chapters';
-import type { StatusType } from '../data/types';
+import type { Expr, StatusType } from '../data/types';
+import { buildLine } from '../systems/story';
+import { h } from '../ui/dom';
 import { input, type Btn } from '../input/input';
 import { audio } from '../systems/audio';
 import { settings } from '../systems/settings';
@@ -227,6 +229,20 @@ export class BattleScene extends Phaser.Scene {
     return this.delay(ms).then(() => { this.tweens.add({ targets: this.banner, alpha: 0, duration: 150 }); });
   }
 
+  /** Speech bubble with a portrait during battle (auto-advances; a tap/confirm hurries it). */
+  private async talk(who: string, text: string, face: Expr, ms: number): Promise<void> {
+    const line = buildLine(who, text, face, null);
+    const el = h('div', { class: `b-talk ${line.side}` }, line.portrait ? h('img', { src: line.portrait, alt: '' }) : null,
+      h('div', { class: 'b-talk-body' }, h('b', {}, line.name), h('span', {}, line.text)));
+    document.getElementById('fx-overlay')!.append(el);
+    requestAnimationFrame(() => el.classList.add('in'));
+    audio.sfx('flip');
+    await this.waitPress((b) => b === 'confirm' || b === 'attack' || b === 'jump', ms);
+    el.classList.remove('in');
+    await this.delay(180);
+    el.remove();
+  }
+
   private popText(x: number, y: number, text: string, color: string, size = 30): void {
     const t = this.add.text(x, y, text, { fontFamily: FONT, fontSize: `${size}px`, color, stroke: '#2a1a0a', strokeThickness: 6 }).setOrigin(0.5).setDepth(1200);
     this.tweens.add({ targets: t, y: y - 60, duration: 900, ease: 'Cubic.out' });
@@ -242,6 +258,7 @@ export class BattleScene extends Phaser.Scene {
       const v = 'who' in s ? this.views.get(s.who) : 'dst' in s ? this.views.get(s.dst) : undefined;
       switch (s.t) {
         case 'text': await this.showText(s.text, s.ms ?? 900); break;
+        case 'talk': await this.talk(s.who, s.text, (s.face ?? 'normal') as Expr, s.ms ?? 2200); break;
         case 'wait': await this.delay(s.ms); break;
         case 'sfx': audio.sfx(s.id); break;
         case 'shake': if (settings.current.screenShake) this.cameras.main.shake(260, 0.012); break;

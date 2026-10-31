@@ -12,6 +12,8 @@ import { quickItems, useFieldItem } from '../systems/inventory';
 import { h, statBar, toast, uiRoot } from './dom';
 import { uiIcon } from '../art/uiIcons';
 import { toggleFullscreen } from './fullscreen';
+import { ABILITIES } from '../world/fieldPlay';
+import type { CharId } from '../data/types';
 
 class Hud {
   private el: HTMLElement | null = null;
@@ -80,7 +82,7 @@ class Hud {
     if (!this.cd) return;
     const world = G.game?.scene.getScene('World') as any;
     const x = world?.playerX ?? 0;
-    const pct = Math.round((x / this.cd.width) * 1000) / 10;
+    const pct = Math.min(100, Math.round((x / this.cd.width) * 1000) / 10);
     if (pct !== this.lastMapPct) { this.lastMapPct = pct; this.mapDot.style.left = pct + '%'; }
   }
 
@@ -92,12 +94,16 @@ class Hud {
     for (const m of party) {
       const isMe = m.key === localKey;
       const hpPct = (m.hp / m.stats.maxHP) * 100;
-      this.party.append(h('div', { class: `hud-card${isMe ? ' me' : ''}` },
+      const partnerCard = G.mode === 'single' && m.key !== 'hero';
+      const card = h('div', { class: `hud-card${isMe ? ' me' : ''}${partnerCard ? ' partner' : ''}`, title: partnerCard ? '點一下換夥伴（R）' : '' },
         h('img', { src: portraitURL({ charId: m.charId }, hpPct < 30 ? 'worried' : 'normal'), alt: '' }),
         h('div', { class: 'hud-card-info' },
           h('div', { class: 'hud-name' }, `${m.name}`, h('span', { class: 'lv' }, ` Lv.${m.level}`)),
           statBar('hp', m.hp, m.stats.maxHP),
-          statBar('sp', m.sp, m.stats.maxSP))));
+          statBar('sp', m.sp, m.stats.maxSP),
+          partnerCard && ABILITIES[m.charId as CharId] ? h('div', { class: 'hud-ability' }, `C：${ABILITIES[m.charId as CharId].name}`) : null));
+      if (partnerCard) card.addEventListener('click', () => input.press('partner'));
+      this.party.append(card);
     }
     this.coins.replaceChildren(uiIcon('coin'), h('span', {}, String(G.state.coins)));
     this.chapterEl.textContent = `第${this.cd?.num}章 ${this.cd?.location ?? ''}`;

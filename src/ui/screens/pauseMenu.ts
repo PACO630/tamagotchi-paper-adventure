@@ -172,7 +172,11 @@ const render: Record<Tab, (el: HTMLElement, refresh: () => void, close: () => vo
     const grid = h('div', { class: 'partner-grid' });
     for (const p of s.partners.unlocked as CharId[]) {
       const active = s.partners.active === p;
-      const b = btn('', () => { G.dispatch({ a: 'setPartner', partner: p }); audio.sfx('join'); refresh(); }, { cls: `partner-card${active ? ' sel' : ''}` });
+      const away = G.cond(`away:${p}`);
+      const b = btn('', () => {
+        if (away) { audio.sfx('error'); return; }
+        G.dispatch({ a: 'setPartner', partner: p }); audio.sfx('join'); refresh();
+      }, { cls: `partner-card${active ? ' sel' : ''}${away ? ' away' : ''}` });
       b.append(h('img', { src: portraitURL({ charId: p }, active ? 'happy' : 'normal'), alt: '' }), h('b', {}, CHARACTERS[p].name), h('small', {}, active ? '同行中' : CHARACTERS[p].fieldAbility));
       grid.append(b);
     }

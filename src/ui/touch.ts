@@ -39,7 +39,8 @@ class TouchControls {
     const buttons = h('div', { class: 'tbtns' },
       mk('t-jump', 'A', 'jump', '跳躍'),
       mk('t-attack', 'B', 'attack', '攻擊'),
-      mk('t-ok', 'OK', 'confirm', '調查'));
+      mk('t-ok', 'OK', 'confirm', '調查'),
+      mk('t-skill', 'C', 'ability', '能力'));
     const dpad = h('div', { class: 'tdpad' }, mk('t-up', '[up]', 'up'), mk('t-left', '[left]', 'left'), mk('t-right', '[right]', 'right'), mk('t-down', '[down]', 'down'));
     this.root.append(this.zone, buttons, dpad);
 

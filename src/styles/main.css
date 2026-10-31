@@ -600,6 +600,8 @@ body.phone.portrait.touch-ui .stick-zone { top: calc(var(--gy) + var(--gh) + 240
 }
 .cine-skip { position: absolute; right: 1em; bottom: 2.2%; font: inherit; font-weight: 900; font-size: .9em; color: #fff; background: rgba(255, 255, 255, .12); border: 2px solid rgba(255, 255, 255, .6); border-radius: 999px; padding: .2em 1em; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .3s; }
 .cinema.on .cine-skip { opacity: .85; pointer-events: auto; }
+/* while a dialogue box is up it has its own skip button (and covers this one) */
+body.dlg-open .cinema.on .cine-skip { opacity: 0; pointer-events: none; }
 body.cinema-on .hud { opacity: 0; transition: opacity .3s; }
 body.cinema-on #touch .stick-zone, body.cinema-on #touch .tbtns, body.cinema-on #touch .tdpad { visibility: hidden; pointer-events: none; }
 

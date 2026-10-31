@@ -21,7 +21,8 @@ class Cinema {
     const skip = h('button', { class: 'cine-skip', type: 'button' }, '跳過');
     skip.addEventListener('click', (e) => { e.stopPropagation(); this.onSkip?.(); });
     this.root = h('div', { class: 'cinema' }, h('div', { class: 'cine-bar top' }), h('div', { class: 'cine-bar bottom' }), this.cap, this.banner, skip);
-    document.getElementById('fx-overlay')!.append(this.root);
+    // inside the UI layer, under the dialogue box (z-index 5 < 8): the bars must never cover the text
+    document.getElementById('ui')!.append(this.root);
     window.addEventListener('keydown', (e) => { if (this.active && e.key === 'Escape') this.onSkip?.(); });
     return this.root;
   }

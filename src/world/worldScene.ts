@@ -661,7 +661,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     if (!p || (G.mode === 'multi' && G.playerChars().includes(p))) return;
     const lead = this.partnerLeader();
     this.partner = new Actor(this, { charId: p }, lead.x - 70, lead.z, 0.8);
-    if (G.mode === 'multi') this.partner.setLabel(`${CHARACTERS[p].name}（跟班）`, '#fffdf6');
+    if (G.mode === 'multi') this.partner.setLabel(CHARACTERS[p].name, '#fffdf6');
     this.trail = [];
   }
 

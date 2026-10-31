@@ -157,7 +157,7 @@ class GameCore {
     const level = Math.max(1, Math.round(ls.reduce((a, b) => a + b, 0) / Math.max(1, ls.length)));
     const st = statsAt(p, level);
     return [{
-      key: p, charId: p, name: `${CHARACTERS[p].name}（跟班）`, level, stats: st,
+      key: p, charId: p, name: CHARACTERS[p].name, level, stats: st,
       hp: Math.min(this.state.partners.hp[p] ?? st.maxHP, st.maxHP), sp: Math.min(this.state.partners.sp[p] ?? st.maxSP, st.maxSP),
       skills: skillsAt(p, level), badges: [], controller: this.net.isHost ? 'local' : this.net.roster.find((r) => r.isHost)?.key ?? 'local',
     }];

@@ -33,6 +33,10 @@ class AudioEngine {
   private timer: number | null = null;
   private tokens: string[] = [];
   private lastBlip = 0;
+  /** the context may be dead even if it says "running" (iOS after an app switch / call) */
+  private stale = false;
+  private hiddenAt = 0;
+  private primed = false;
 
   init(): void {
     // iOS: play through the silent switch, like a game app (Safari 17+)
@@ -40,18 +44,46 @@ class AudioEngine {
     // iOS only lets audio start from a "real" gesture (touchend / click, not touchstart), and the
     // context can come back "interrupted" after a call or app switch — so retry on every gesture.
     const unlock = () => {
-      if (this.ctx?.state === 'closed') this.rebuild();
+      const st = this.ctx?.state as string | undefined;
+      if (this.ctx && (this.stale || st === 'closed' || st === 'interrupted')) this.hardReset();
       this.ensure();
-      if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume().catch(() => { /* needs a gesture */ });
+      const ctx = this.ctx;
+      if (!ctx) return;
+      if (!this.primed) {
+        // a silent sample started inside the gesture is what really wakes iOS audio
+        this.primed = true;
+        try { const src = ctx.createBufferSource(); src.buffer = ctx.createBuffer(1, 1, 22050); src.connect(ctx.destination); src.start(0); } catch { /* ignore */ }
+      }
+      if (ctx.state !== 'running') {
+        void ctx.resume().catch(() => { /* needs a gesture */ });
+        // still not running a moment later: start over with a fresh context on the next tap
+        window.setTimeout(() => { if (this.ctx === ctx && ctx.state !== 'running') this.stale = true; }, 500);
+      }
     };
     for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'keydown']) window.addEventListener(ev, unlock, { passive: true, capture: true });
     bus.on('settings:changed', () => this.applyVolumes());
+    // (no suspend() here: on iOS a suspend/resume round trip can leave the context "running" but mute)
     document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { this.hiddenAt = performance.now(); return; }
       if (!this.ctx) return;
-      if (document.hidden) void this.ctx.suspend().catch(() => undefined);
-      else void this.ctx.resume().catch(() => undefined);
+      // away for more than a moment: rebuild the audio on the next tap to be safe
+      if (this.hiddenAt && performance.now() - this.hiddenAt > 1500) this.stale = true;
+      void this.ctx.resume().catch(() => undefined);
     });
-    window.addEventListener('pageshow', () => { if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume().catch(() => undefined); });
+    window.addEventListener('pageshow', (e) => {
+      if (!this.ctx) return;
+      if ((e as PageTransitionEvent).persisted) this.stale = true;
+      if (this.ctx.state !== 'running') void this.ctx.resume().catch(() => undefined);
+    });
+  }
+
+  /** Throw the old context away; the next ensure() builds a new one and restarts the song. */
+  private hardReset(): void {
+    const old = this.ctx;
+    this.rebuild();
+    this.stale = false;
+    this.primed = false;
+    if (old && old.state !== 'closed') void old.close().catch(() => undefined);
   }
 
   /** The context was closed by the system: start over and restart the current song. */

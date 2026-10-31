@@ -11,6 +11,11 @@ import { input, type Btn } from '../input/input';
 import { settings } from '../systems/settings';
 import { $, h, iconLabel } from './dom';
 
+/** Pointer capture is only a nicety (keeps the button pressed when the finger slides off). */
+function capture(el: HTMLElement, id: number): void {
+  try { el.setPointerCapture(id); } catch { /* iOS: pointer already gone — the press still counts */ }
+}
+
 class TouchControls {
   private root!: HTMLElement;
   private knob!: HTMLElement;
@@ -31,7 +36,15 @@ class TouchControls {
     this.zone = h('div', { class: 'stick-zone' }, this.base);
     const mk = (cls: string, label: string, b: Btn, sub?: string) => {
       const el = h('div', { class: `tbtn ${cls}`, role: 'button', 'aria-label': sub ?? label }, h('b', {}, ...iconLabel(label)), sub ? h('small', {}, sub) : null);
-      el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('down'); input.touchDown(b); if (navigator.vibrate) navigator.vibrate(8); });
+      el.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        // register the press first: iOS sometimes refuses the pointer capture (quick taps,
+        // multi-touch) and an exception there used to swallow the press — e.g. "can't talk"
+        el.classList.add('down');
+        input.touchDown(b);
+        capture(el, e.pointerId);
+        if (navigator.vibrate) navigator.vibrate(8);
+      });
       const up = () => { el.classList.remove('down'); input.touchUp(b); };
       el.addEventListener('pointerup', up);
       el.addEventListener('pointercancel', up);
@@ -52,7 +65,7 @@ class TouchControls {
       // the left half is the joystick area — but tapping a talk bubble there should still talk
       if (this.tapHook?.(e.clientX, e.clientY)) return;
       this.stickId = e.pointerId;
-      this.zone.setPointerCapture(e.pointerId);
+      capture(this.zone, e.pointerId);
       // floating stick: centre it under the thumb
       const zr = this.zone.getBoundingClientRect();
       const half = this.base.offsetWidth / 2;

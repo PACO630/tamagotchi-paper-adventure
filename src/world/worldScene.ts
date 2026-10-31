@@ -736,8 +736,9 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     }
 
     void this.processShowOff();
+    this.healStuckState(dt);
     // watchdog: a script that has done nothing for a long time with nothing on screen is stuck → release the player
-    if (storyRunning() && storyIdleMs() > 20000 && !dialogue.open && !battleActive() && !this.scene.isActive('Opening')
+    if (storyRunning() && storyIdleMs() > 12000 && !dialogue.open && !battleActive() && !this.scene.isActive('Opening')
       && !this.scene.isActive('Stage') && !this.scene.isActive('SkyBattle')
       && !document.querySelector('#ui .layer:not(.out)') && !document.querySelector('.chapter-card, .storybook, .asm-root, .name-card')) {
       console.warn('story watchdog: resetting a stuck script');
@@ -765,6 +766,32 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     const hp = G.mode === 'single' ? G.state.playerHP : -2;
     if (hp !== this.lastHp) { this.lastHp = hp; hud.update(); }
     input.endFrame();
+  }
+
+  private stuckT = 0;
+
+  /**
+   * Safety net (seen on iPhones): a cutscene, menu or dialogue that ended abnormally can leave a
+   * lock behind — dialogue box state, an input blocker, the cutscene lock or the busy flag — and the
+   * player can no longer talk or move. If such a lock stays with nothing on screen to explain it,
+   * release it.
+   */
+  private healStuckState(dt: number): void {
+    // multiplayer guests show the host's dialogue / cutscenes without running a script themselves
+    if (!G.isAuthority) return;
+    const screenUp = battleActive() || this.showingOff || this.falling
+      || this.scene.isActive('Opening') || this.scene.isActive('Stage') || this.scene.isActive('SkyBattle')
+      || !!document.querySelector('#ui .layer:not(.out), .chapter-card, .storybook, .asm-root, .name-card, .ending, .rotate-lock.show');
+    const lockedUp = dialogue.open || this.busy || cinema.active || input.blocked || this.player.locked;
+    this.stuckT = !screenUp && !storyRunning() && lockedUp ? this.stuckT + dt : 0;
+    if (this.stuckT < 1.5) return;
+    console.warn('releasing a leftover lock', { dialogue: dialogue.open, busy: this.busy, cinema: cinema.active, blocked: input.blocked });
+    this.stuckT = 0;
+    if (dialogue.open) dialogue.hide();
+    if (cinema.active) this.cinema(false);
+    this.busy = false;
+    this.player.locked = false;
+    input.clearBlockers();
   }
 
   private platformAt(x: number, z: number): PlatView | null {

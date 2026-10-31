@@ -35,17 +35,31 @@ class AudioEngine {
   private lastBlip = 0;
 
   init(): void {
+    // iOS: play through the silent switch, like a game app (Safari 17+)
+    try { const s = (navigator as any).audioSession; if (s) s.type = 'playback'; } catch { /* not supported */ }
+    // iOS only lets audio start from a "real" gesture (touchend / click, not touchstart), and the
+    // context can come back "interrupted" after a call or app switch — so retry on every gesture.
     const unlock = () => {
+      if (this.ctx?.state === 'closed') this.rebuild();
       this.ensure();
-      if (this.ctx?.state === 'suspended') void this.ctx.resume();
+      if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume().catch(() => { /* needs a gesture */ });
     };
-    for (const ev of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(ev, unlock, { passive: true });
+    for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'keydown']) window.addEventListener(ev, unlock, { passive: true, capture: true });
     bus.on('settings:changed', () => this.applyVolumes());
     document.addEventListener('visibilitychange', () => {
       if (!this.ctx) return;
-      if (document.hidden) void this.ctx.suspend();
-      else void this.ctx.resume();
+      if (document.hidden) void this.ctx.suspend().catch(() => undefined);
+      else void this.ctx.resume().catch(() => undefined);
     });
+    window.addEventListener('pageshow', () => { if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume().catch(() => undefined); });
+  }
+
+  /** The context was closed by the system: start over and restart the current song. */
+  private rebuild(): void {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+    this.ctx = null;
+    this.songGain = null;
   }
 
   private ensure(): boolean {

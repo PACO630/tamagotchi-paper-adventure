@@ -171,6 +171,7 @@ class BattleUI {
       };
 
       off = input.onPress((b) => {
+        if (!this.root || !this.menuEl.isConnected) { off?.(); return false; } // battle UI already gone
         if (!items.length) return true;
         if (b === 'up' || b === 'left') { focus = (focus - 1 + items.length) % items.length; (this as any)._refocus(); audio.sfx('hover'); }
         else if (b === 'down' || b === 'right') { focus = (focus + 1) % items.length; (this as any)._refocus(); audio.sfx('hover'); }

@@ -178,6 +178,7 @@ class DialogueBox {
         resolve(i);
       };
       const offChoice = input.onPress((b) => {
+        if (!this.el) { offChoice(); return false; } // dialogue closed underneath us
         if (!interactive) return true;
         if (b === 'up' || b === 'left') { idx = (idx - 1 + btns.length) % btns.length; focus(); audio.sfx('hover'); }
         else if (b === 'down' || b === 'right') { idx = (idx + 1) % btns.length; focus(); audio.sfx('hover'); }

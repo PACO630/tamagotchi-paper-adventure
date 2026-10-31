@@ -30,6 +30,7 @@ import { Actor, depthScale, zToY } from './actor';
 import { worldNet } from './worldNet';
 import { session } from '../net/session';
 import { cinema } from '../ui/cinema';
+import { touch } from '../ui/touch';
 import { openTutorial } from '../ui/screens/tutorial';
 import { CHARACTERS } from '../data/characters';
 import { SPEAKERS } from '../data/chapters/helpers';
@@ -178,6 +179,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       const b = this.interactBubble;
       if (Math.abs(ptr.worldX - b.x) < 80 && ptr.worldY > b.y - 60 && ptr.worldY < b.y + 170) this.tryInteract();
     });
+    touch.tapHook = (cx, cy) => this.tapBubbleAt(cx, cy);
+    this.events.once('shutdown', () => { if (touch.tapHook) touch.tapHook = null; });
     this.interactText = this.add.text(0, 0, '!', { fontFamily: FONT, fontSize: '26px', color: '#e8203a' }).setOrigin(0.5).setDepth(9501).setVisible(false);
 
     audio.playMusic(cd.music);
@@ -1145,6 +1148,18 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       if (d.type === 'ability' && !o.open) consider('ability', d.id, d.x, d.look === 'paint_bridge' || d.look === 'food_wall' || d.look === 'paint_wall' ? p.z : d.z, 140, d.look === 'paint_bridge' ? 200 : 130);
     }
     return best;
+  }
+
+  /** Screen tap (client coordinates) on the interact bubble → interact. */
+  private tapBubbleAt(clientX: number, clientY: number): boolean {
+    const b = this.interactBubble;
+    if (!b?.visible || input.blocked || storyRunning() || battleActive() || this.busy) return false;
+    const r = this.game.canvas.getBoundingClientRect();
+    const gx = ((clientX - r.left) / r.width) * this.scale.width;
+    const gy = ((clientY - r.top) / r.height) * this.scale.height;
+    const p = this.cameras.main.getWorldPoint(gx, gy);
+    if (Math.abs(p.x - b.x) < 90 && p.y > b.y - 70 && p.y < b.y + 170) { this.tryInteract(); return true; }
+    return false;
   }
 
   private updateInteractPrompt(can: boolean): void {

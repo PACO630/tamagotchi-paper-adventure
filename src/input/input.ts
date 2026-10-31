@@ -36,7 +36,11 @@ class Input {
     window.addEventListener('keyup', (e) => {
       for (const b of KEYMAP[e.code] ?? []) this.held.delete(b);
     });
-    window.addEventListener('blur', () => { this.held.clear(); this.touchHeld.clear(); this.stick.x = this.stick.y = 0; });
+    const forget = () => { this.held.clear(); this.touchHeld.clear(); this.pressed.clear(); this.stick.x = this.stick.y = 0; };
+    window.addEventListener('blur', forget);
+    // phones: switching apps does not always send "blur"
+    document.addEventListener('visibilitychange', () => { if (document.hidden) forget(); });
+    window.addEventListener('pagehide', forget);
   }
 
   /** Called by keyboard handlers and touch buttons. */

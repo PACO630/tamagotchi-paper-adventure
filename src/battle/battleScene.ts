@@ -93,7 +93,7 @@ export class BattleScene extends Phaser.Scene {
     this.bannerText = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '28px', color: '#3a2a1a', align: 'center', wordWrap: { width: 570 } }).setOrigin(0.5);
     this.banner = this.add.container(GAME_W / 2, 92, [bg, this.bannerText]).setDepth(1000).setAlpha(0);
 
-    this.input.on('pointerdown', () => { if (this.tapWanted) input.press('confirm'); });
+    // taps for action commands are read from the whole page (see listenForTaps), not only the canvas
     this.cameras.main.fadeIn(300);
     this.onReady?.();
   }
@@ -471,11 +471,29 @@ export class BattleScene extends Phaser.Scene {
     return document.body.classList.contains('touch-ui');
   }
 
+  /**
+   * During action commands a tap anywhere counts as the confirm button — including taps that land
+   * on the party panel or prompts (on phones those cover a good part of the screen and would
+   * otherwise never reach the canvas). The direction pad keeps its own buttons.
+   */
+  private listenForTaps(): () => void {
+    const onDown = (e: PointerEvent) => {
+      if (!this.tapWanted) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('.tdpad, .dlg-skip, .cine-skip, button')) return;
+      input.press('confirm');
+    };
+    window.addEventListener('pointerdown', onDown, { capture: true });
+    return () => window.removeEventListener('pointerdown', onDown, { capture: true });
+  }
+
   async command(spec: CommandSpec): Promise<Quality | number> {
     this.tapWanted = true;
+    const off = this.listenForTaps();
     try {
       return await this.commandInner(spec);
     } finally {
+      off();
       this.tapWanted = false;
       bus.emit('touch:dpad', false);
     }
@@ -573,9 +591,11 @@ export class BattleScene extends Phaser.Scene {
   /** Guard command for the targeted local player. */
   async guard(spec: { attacker: string; target: string; hard: boolean; badges: string[] }): Promise<GuardResult> {
     this.tapWanted = true;
+    const off = this.listenForTaps();
     try {
       return await this.guardInner(spec);
     } finally {
+      off();
       this.tapWanted = false;
     }
   }

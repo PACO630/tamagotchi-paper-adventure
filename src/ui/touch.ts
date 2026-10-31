@@ -21,6 +21,8 @@ class TouchControls {
   private stickId: number | null = null;
   private center = { x: 0, y: 0 };
   private dirHeld: Btn | null = null;
+  /** Set by the world: returns true when a screen tap hit the "…" / "!" bubble (and handled it). */
+  tapHook: ((clientX: number, clientY: number) => boolean) | null = null;
 
   init(): void {
     this.root = $('#touch');
@@ -46,6 +48,8 @@ class TouchControls {
 
     this.zone.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      // the left half is the joystick area — but tapping a talk bubble there should still talk
+      if (this.tapHook?.(e.clientX, e.clientY)) return;
       this.stickId = e.pointerId;
       this.zone.setPointerCapture(e.pointerId);
       // floating stick: centre it under the thumb

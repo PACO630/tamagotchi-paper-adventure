@@ -6,7 +6,7 @@ import {
 
 const MASK_JOIN: Script = [
   CINE(),
-  L('maskutchi', '站住！可疑的傢伙……咦，是麻美吉？', 'surprised'),
+  L('maskutchi', '站住！可疑的傢伙……咦，是麻每吉？', 'surprised'),
   L('maskutchi', '我是正義的假面英雄！我在調查這座工廠為什麼會失控。', 'determined'),
   L('maskutchi', '裡面到處都是監視器，被照到就會被抓出去。不過——我有秘密武器！', 'happy'),
   L('hero', '是星之心碎片讓工廠失控的！我們一起去阻止它吧！', 'determined'),
@@ -48,7 +48,7 @@ const BROS_FIGHT: Script = [
 export const ch4: ChapterDef = {
   id: 'ch4', num: 4, title: '第四章：失控的玩具工廠', location: '玩具工廠',
   summary: '原本製造歡樂的玩具工廠，現在只會做出奇怪的機械生物。到處都是監視器的紅光。',
-  music: 'factory', weather: 'sparks', width: 6400, start: { x: 180, z: 130 }, grey: -0.6,
+  music: 'factory', weather: 'sparks', width: 6400, start: { x: 180, z: 130 }, grey: -0.6, eggDrain: 0.1,
   theme: {
     id: 'factory', skyTop: 0x4a4a6a, skyBottom: 0xc89a7a, far: 0x7a6a7a, farAccent: 0xc86a5a, mid: 0x8a8a98, midAccent: 0xffb84a,
     ground: 0xa8a8b8, groundAccent: 0x6a6a7a, groundEdge: 0xffc84a, pitColor: 0x2a2a3a, light: 0xffd8a0, ambient: 0xf0e8e0,
@@ -86,8 +86,8 @@ export const ch4: ChapterDef = {
       { if: '!ch4_line_fixed', script: [L('engineer', '電源回來了，可是控制室被兩個灰灰的傢伙佔領了！生產線被亂設定，門也打不開……', 'worried'), L('engineer', '控制室的門就在前面，最裡面的那扇。', 'normal'), QS('q4_bros')] },
       { script: [L('engineer', '生產線恢復了！但是總裝配廠的超級機器人還在暴走……', 'worried')] },
     ] },
-    { id: 'xiaohui_c', name: '小灰', look: { color: '#c4c4cc', accent: '#7a5aa0', ears: 'pointy', glasses: true, size: 0.82 }, x: ROOM_X + 1100, z: 110, showIf: '!ch4_bros_gone', talk: [{ script: BROS_FIGHT }] },
-    { id: 'dahui_c', name: '大灰', look: { color: '#a8a8b4', accent: '#5a5a6a', ears: 'round', hat: 'cap', size: 1.15 }, x: ROOM_X + 1230, z: 150, showIf: '!ch4_bros_gone', talk: [{ script: BROS_FIGHT }] },
+    { id: 'xiaohui_c', name: '小灰', look: { species: 'xiaohui', color: '#cfd0d8', accent: '#7a5aa0' }, x: ROOM_X + 1100, z: 110, showIf: '!ch4_bros_gone', talk: [{ script: BROS_FIGHT }] },
+    { id: 'dahui_c', name: '大灰', look: { species: 'dahui', color: '#aeb0bc', accent: '#5a5c6e' }, x: ROOM_X + 1230, z: 150, showIf: '!ch4_bros_gone', talk: [{ script: BROS_FIGHT }] },
   ],
   enemies: [
     { id: 'e4a', enemy: 'windup_mouse', party: ['windup_mouse', 'windup_mouse'], x: 1700, z: 120, ai: 'chaser', small: true },
@@ -97,6 +97,7 @@ export const ch4: ChapterDef = {
     { id: 'e4e', enemy: 'drone', party: ['drone', 'drone', 'spring_bot'], x: 5200, z: 140, ai: 'chaser' },
   ],
   chests: [
+    { id: 'c4_px1', x: 2250, z: 225, items: [{ id: 'thunder_bomb', qty: 1 }, { id: 'juice', qty: 1 }], world: 'pixel' },
     { id: 'c4_1', x: 450, z: 60, items: [{ id: 'sticker_10', qty: 1 }] },
     { id: 'c4_card', x: 2550, z: 120, items: [{ id: 'factory_card', qty: 1 }] },
     { id: 'c4_h1', x: 1500, z: 200, items: [{ id: 'gear_part', qty: 1 }, { id: 'juice', qty: 1 }], hidden: true },
@@ -106,6 +107,9 @@ export const ch4: ChapterDef = {
     { id: 'c4_room', x: ROOM_X + 1500, z: 60, items: [{ id: 'sticker_10', qty: 1 }, { id: 'power_cookie', qty: 2 }], showIf: 'ch4_bros_gone' },
   ],
   objects: [
+    { id: 'sign_egg4', type: 'sign', x: 4090, z: 215, text: '像素世界裡，所有機器都會停下來——壓板也是！不過壓板中間有只在像素世界才有的牆。' },
+    { id: 'eggw41', type: 'egg_wall', x: 4325, z: 0, w: 1, world: 'pixel' },
+    { id: 'eggw42', type: 'egg_wall', x: 4845, z: 0, w: 1, world: 'pixel' },
     { id: 'sign41', type: 'sign', x: 350, z: 170, text: '【警告】監視器運轉中。被燈光照到的人會被送回入口！機械手臂落下的地方請勿停留！' },
     { id: 'save41', type: 'savepoint', x: 920, z: 60 },
     { id: 'gate41', type: 'gate', x: 2750, z: 0, cond: 'item:factory_card', w: 1 },
@@ -134,6 +138,10 @@ export const ch4: ChapterDef = {
   platforms: [],
   rooms: [{ id: 'control', x: ROOM_X, w: 1800, name: '中央控制室' }],
   triggers: [
+    { id: 't4_egg', x: 4110, w: 60, once: true, script: [
+      L('hero', '在像素世界，壓板就不會動了……可是中間有像素的牆！', 'determined'),
+      PL('maskutchi', '那就在牆前面切回紙片世界，看準壓板抬起來的瞬間衝過去！', 'determined'),
+    ] },
     { id: 't4_mask', x: 540, w: 60, if: '!joined:maskutchi', once: true, block: true, script: [EMOTE('maskutchi', '!'), ...MASK_JOIN] },
     { id: 't4_spot', x: 930, w: 50, once: true, script: [
       CINE(), PAN(1260, 800),

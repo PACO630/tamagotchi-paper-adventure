@@ -36,6 +36,7 @@ import { CHARACTERS } from '../data/characters';
 import { SPEAKERS } from '../data/chapters/helpers';
 import { playBook } from '../ui/storybook';
 import { ABILITIES, FieldPlay } from './fieldPlay';
+import { EggWorld } from './eggWorld';
 import { runNested } from '../systems/story';
 import { portraitURL } from '../art/textures';
 import { INTERLUDES } from '../data/interludes';
@@ -99,6 +100,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private gathered: string[] = [];
   private sat = 0;
   private colorFx: Phaser.FX.ColorMatrix | null = null;
+  egg!: EggWorld;
   private area: { x0: number; x1: number; room?: RoomDef } = { x0: 0, x1: 0 };
   private stage: StageScene | null = null;
 
@@ -122,6 +124,9 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     this.extras.clear(); this.gathered = []; this.colorFx = null; this.stage = null;
     this.busy = false;
     this.time0 = this.time.now;
+    this.egg?.destroy();
+    this.egg = new EggWorld(this, cd.eggDrain ?? 0.085);
+    this.egg.onFlip = () => this.onWorldFlip();
 
     this.cameras.main.setBounds(0, 0, cd.width, GAME_H);
     this.area = { x0: 0, x1: cd.width };
@@ -149,6 +154,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     this.refreshPartner();
     this.updateArea(true);
     this.fp = new FieldPlay(this);
+    // saves from before the egg device existed get it as soon as they reach chapter 2+
+    if (cd.num > 1 && !G.cond('has_egg') && G.isAuthority) G.dispatch({ a: 'flag', k: 'has_egg', v: true });
     // the world has lost its colour until this chapter's guardian is calmed down
     this.sat = G.cond(cd.boss.flag) ? 0 : cd.grey ?? -0.5;
     if (this.renderer.type === Phaser.WEBGL) {
@@ -156,6 +163,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       this.colorFx = this.cameras.main.postFX.addColorMatrix();
       this.applySat();
     }
+
+    this.onWorldFlip();
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.12, 0.12, 0, 120);
     this.cameras.main.setDeadzone(160, 400);
@@ -225,6 +234,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
 
   private cleanup(): void {
     if (storyRunning()) resetStory();
+    this.egg?.destroy();
     for (const o of this.offs) o();
     this.offs = [];
     hud.unmount();
@@ -383,6 +393,9 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         case 'gate':
           for (const z of [0, 50, 100, 150, 200, 240]) add(ensureObject(this, 'gate'), def.x, zToY(z) + 8, depthScale(z) * 0.5);
           break;
+        case 'egg_wall':
+          for (const z of [0, 50, 100, 150, 200, 240]) add(ensureObject(this, `egg_wall_${def.world ?? 'paper'}`), def.x, zToY(z) + 8, depthScale(z) * 0.55);
+          break;
         case 'switch':
           add(ensureObject(this, 'switch_off'), def.x, y, depthScale(def.z));
           break;
@@ -497,6 +510,21 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         v.img.forEach((i) => i.setVisible(show));
         v.label?.setVisible(show);
     }
+    if (d.world && this.egg) this.applyWorldLook(v);
+  }
+
+  /** Things from the other world are only a faint outline. */
+  private applyWorldLook(v: ObjView): void {
+    const has = this.egg.has(v.def.world);
+    v.img.forEach((i) => i.setAlpha(has ? 1 : 0.14));
+    if (!has) v.label?.setVisible(false);
+    else if (!v.def.showIf || G.cond(v.def.showIf)) v.label?.setVisible(true);
+  }
+
+  private onWorldFlip(): void {
+    for (const v of this.objects) if (v.def.world) this.applyWorldLook(v);
+    for (const c of this.chests) if (c.def.world) this.refreshChest(c);
+    hud.update();
   }
 
   private buildChests(): void {
@@ -513,7 +541,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   }
 
   private refreshChest(cv: ChestView): void {
-    const visible = cv.revealed && (!cv.def.showIf || G.cond(cv.def.showIf) || G.cond(`chest:${cv.def.id}`));
+    const visible = cv.revealed && this.egg.has(cv.def.world) && (!cv.def.showIf || G.cond(cv.def.showIf) || G.cond(`chest:${cv.def.id}`));
     cv.img.setVisible(visible);
     cv.shadow.setVisible(visible);
     if (G.cond(`chest:${cv.def.id}`)) cv.img.setTexture(ensureObject(this, 'chest_open'));
@@ -692,6 +720,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     this.updatePlayer(dt, canControl);
     this.updateArea();
     this.fp.update(t, dt, canControl);
+    this.egg.update(canControl ? dt : 0);
     this.updatePartner();
     for (const a of this.extras.values()) a.sync();
     this.updateDarkness(dt);
@@ -703,6 +732,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       else if (input.justPressed('item')) hud.quickUse();
       else if (input.justPressed('ability')) this.fp.use();
       else if (input.justPressed('partner')) this.cyclePartner();
+      else if (input.justPressed('egg')) this.egg.toggle();
     }
 
     void this.processShowOff();
@@ -756,14 +786,14 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       const shown = !p.def.showIf || G.cond(p.def.showIf);
       // (multiplayer: nobody may have the right partner, so secret paths simply stay visible)
       const secret = p.def.secret ? G.mode === 'multi' || (this.fp?.reveal[p.def.secret] ?? 0) > 0 : true;
-      const on = shown && secret;
+      const on = shown && secret && this.egg.has(p.def.world);
       if (on !== p.on) {
         p.on = on;
         if (on) { p.img.setAlpha(0).setVisible(true); this.tweens.add({ targets: p.img, alpha: 1, duration: 350 }); this.paperBurst(nx, y - 10, 0xffffff, 6); }
       }
       if (!on) {
-        // a faint shimmer hints at secret platforms
-        const hint = p.def.secret && shown ? 0.07 + Math.max(0, Math.sin(t * 2 + p.x0)) * 0.08 : 0;
+        // a faint shimmer hints at secret platforms (and at the other world's platforms)
+        const hint = (p.def.secret || p.def.world) && shown ? 0.07 + Math.max(0, Math.sin(t * 2 + p.x0)) * 0.08 : 0;
         p.img.setVisible(hint > 0).setAlpha(hint);
       } else if (p.def.secret && (this.fp?.reveal[p.def.secret] ?? 0) < 2) p.img.setAlpha(Math.floor(t * 8) % 2 ? 0.5 : 1);
     }
@@ -773,12 +803,21 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     for (const h of this.hazards) {
       const per = h.zone.period ?? 2, duty = h.zone.duty ?? 0.4;
       const ph = (t % per) / per;
-      const active = ph < duty;
+      const active = ph < duty && this.zoneOn(h.zone);
       if (active && !h.active) { audio.sfx('hammer', 0.6); if (settings.current.screenShake) this.cameras.main.shake(80, 0.004); }
       h.active = active;
       const target = active ? GROUND_TOP + 80 : GROUND_TOP - 300;
       h.piston.y += (target - h.piston.y) * (active ? 0.5 : 0.08);
     }
+  }
+
+  /** Zones tagged with a world only work there; in the pixel world every machine stops. */
+  zoneOn(z: ZoneDef): boolean {
+    if (!this.egg.has(z.world)) return false;
+    if (this.egg.on && !z.world && (z.type === 'conveyor' || z.type === 'hazard')) return false;
+    // …and there is no water: no currents, no need to hold your breath
+    if (this.egg.on && !z.world && (z.type === 'current' || z.type === 'deep')) return false;
+    return true;
   }
 
   private inZone(z: ZoneDef, x: number, zz: number): boolean {
@@ -797,7 +836,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     // environment forces
     let grounded = p.y <= 0.01;
     for (const z of this.chapter.zones) {
-      if (!this.inZone(z, p.x, p.z)) continue;
+      if (!this.inZone(z, p.x, p.z) || !this.zoneOn(z)) continue;
       if (z.type === 'wind' || z.type === 'current') { vx += z.fx ?? 0; vz += z.fz ?? 0; }
       if (z.type === 'conveyor' && grounded) vx += z.fx ?? 0;
     }
@@ -843,7 +882,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     // platforms & pits
     this.onPlatform = grounded ? this.platformAt(p.x, p.z) : null;
     if (grounded && !this.onPlatform) {
-      const pit = this.chapter.zones.find((z) => z.type === 'pit' && this.inZone(z, p.x, p.z));
+      const pit = this.chapter.zones.find((z) => z.type === 'pit' && this.zoneOn(z) && this.inZone(z, p.x, p.z));
       if (pit) { this.fallIntoPit(); return; }
       this.safeTimer -= dt;
       if (this.safeTimer <= 0) {
@@ -895,7 +934,9 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     for (const o of this.objects) {
       const d = o.def;
       let solid = false, r = 46;
+      if (d.world && !this.egg.has(d.world)) continue;
       if (d.type === 'gate' && !o.open) solid = true;
+      if (d.type === 'egg_wall' && (!d.showIf || G.cond(d.showIf))) solid = true;
       if (d.type === 'breakable' && !o.broken) { solid = true; if (!d.w) { r = 40; if (Math.abs(z - d.z) > 34) solid = false; } }
       if (d.type === 'ability' && !o.open && (d.look === 'food_wall' || d.look === 'paint_wall' || d.look === 'bear') && (!d.showIf || G.cond(d.showIf))) { solid = true; r = d.look === 'bear' ? 70 : 50; }
       if (!solid) continue;
@@ -1035,7 +1076,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       if (!visible) continue;
       const px = this.player.x, pz = this.player.z;
       const dist = Math.hypot(px - e.x, (pz - e.z) * 1.5);
-      const blocked = this.busy || storyRunning() || battleActive() || input.blocked || chasing;
+      const blocked = this.busy || storyRunning() || battleActive() || input.blocked || chasing || this.egg.on;
       const hiddenPlayer = !!this.fp?.hidden;
       const lure = this.fp?.lureFor(e.x, e.z) ?? null;
       const running = input.axis().run && (Math.abs(input.axis().x) > 0.2 || Math.abs(input.axis().y) > 0.2);
@@ -1144,6 +1185,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     for (const o of this.objects) {
       const d = o.def;
       if (d.showIf && !G.cond(d.showIf)) continue;
+      if (d.world && !this.egg.has(d.world)) continue;
       if (d.type === 'sign' || d.type === 'savepoint' || d.type === 'door' || d.type === 'shard' || d.type === 'switch') consider(d.type, d.id, d.x, d.z, d.type === 'savepoint' ? 170 : 110);
       if (d.type === 'ability' && !o.open) consider('ability', d.id, d.x, d.look === 'paint_bridge' || d.look === 'food_wall' || d.look === 'paint_wall' ? p.z : d.z, 140, d.look === 'paint_bridge' ? 200 : 130);
     }
@@ -1986,7 +2028,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     const exp = Math.max(1, Math.round(def.exp * e.party.length * 0.6));
     if (G.mode === 'multi') G.dispatch({ a: 'flag', k: `defeated:${e.id}`, v: true });
     else { G.dispatch({ a: 'exp', n: exp }); G.dispatch({ a: 'coins', n: def.coins }); }
-    toast(`庫奇帕奇一口吞掉了 ${def.name}！（EXP +${exp}）`, 'good', 1600);
+    toast(`大嘴吉一口吞掉了 ${def.name}！（EXP +${exp}）`, 'good', 1600);
   }
 
   /** Player asked to use an ability spot (confirm near it, or the ability button). */

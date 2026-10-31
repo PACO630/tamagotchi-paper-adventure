@@ -7,7 +7,7 @@ import { weightedPick } from '../core/util';
 import { CHARACTERS } from '../data/characters';
 import { ENEMIES } from '../data/enemies';
 import { ITEMS } from '../data/items';
-import { SKILLS } from '../data/skills';
+import { DUOS, DUO_COST, SKILLS } from '../data/skills';
 import type { CharId, EnemyMove, SkillDef, StatusSpec, StatusType } from '../data/types';
 import { badgeBonus } from '../systems/progression';
 import type { BattleOutcome, BattleReward, BattleSetup, CommandSpec, Fighter, FxStep, GuardResult, MenuChoice, Quality } from './battleTypes';
@@ -19,6 +19,9 @@ export interface BattleIO {
   play(steps: FxStep[]): Promise<void>;
   sync(core: BattleCore): void;
 }
+
+/** Skill effects that count as a physical blow (soft wet paper takes more damage from these). */
+const PHYSICAL_FX = new Set(['hammer', 'jump', 'kick', 'bite', 'slash', 'shuriken']);
 
 const Q_MULT: Record<Quality, number> = { great: 1.5, nice: 1.25, ok: 1, none: 0.8 };
 const Q_LABEL: Record<Quality, string> = { great: 'Great!', nice: 'Nice!', ok: '', none: '' };
@@ -89,7 +92,7 @@ export class BattleCore {
   }
 
   defOf(f: Fighter): number {
-    let d = f.def + this.statusAmt(f, 'defUp') - this.statusAmt(f, 'defDown') + (f.defending ? 1 : 0);
+    let d = f.def + this.statusAmt(f, 'defUp') - this.statusAmt(f, 'defDown') - this.statusAmt(f, 'crumpled') + (f.defending ? 1 : 0);
     if (f.side === 'enemy' && f.enemyId === 'castle_knight' && this.enemies.some((e) => e.enemyId === 'mirror_decoy' && e.hp > 0)) d += 3;
     return Math.max(0, d);
   }
@@ -260,6 +263,13 @@ export class BattleCore {
     }
     if (choice.kind === 'flee' && this.setup.boss) return '這場戰鬥無法逃跑！';
     if (choice.kind === 'team' && !this.teamUnlocked) return '還不能使用';
+    if (choice.kind === 'duo') {
+      const p = this.byId(choice.partner ?? '');
+      const d = p?.charId ? DUOS[p.charId] : undefined;
+      if (!p || !d || p.hp <= 0 || p.id === f.id) return '夥伴不在場';
+      if (this.has(p, 'sleep') || this.has(p, 'dizzy')) return `${p.name} 現在沒辦法配合！`;
+      if (f.sp < DUO_COST || p.sp < DUO_COST) return `兩個人都需要 ${DUO_COST} 技能點數！`;
+    }
     return null;
   }
 
@@ -286,6 +296,13 @@ export class BattleCore {
       return;
     }
     if (c.kind === 'item') return this.useItem(f, c.item!, c.target);
+    if (c.kind === 'duo') {
+      const p = this.byId(c.partner ?? '')!;
+      const d = DUOS[p.charId!]!;
+      f.sp -= DUO_COST;
+      p.sp -= DUO_COST;
+      return this.useDuo(f, p, d, c.target, hard);
+    }
     const skill = c.kind === 'hammer' ? SKILLS.hammer : c.kind === 'jump' ? SKILLS.jump : c.kind === 'team' ? SKILLS.star_harmony : SKILLS[c.skill!];
     if (c.kind === 'skill') {
       f.sp -= this.skillCost(skill);
@@ -304,17 +321,38 @@ export class BattleCore {
     }
   }
 
-  private async useSkill(f: Fighter, skill: SkillDef, target: string | undefined, hard: boolean): Promise<void> {
+  /** Duo move: both fighters play their own action command, then attack together. */
+  private async useDuo(f: Fighter, p: Fighter, d: SkillDef & { cmd2: CommandSpec['cmd'] }, target: string | undefined, hard: boolean): Promise<void> {
+    const first = this.targetsFor(f, d, target)[0];
+    if (!first) return;
+    await this.io.play([{ t: 'talk', who: f.id, text: `${p.name}，一起上吧！`, ms: 900 }, { t: 'text', text: `合體技「${d.name}」！`, ms: 800 }]);
+    const r1 = await this.io.command(f.controller, { cmd: d.command as CommandSpec['cmd'], actor: f.id, target: first.id, hard, len: 4 });
+    const r2 = await this.io.command(p.controller, { cmd: d.cmd2, actor: p.id, target: first.id, hard, len: 5 });
+    const score = (q: unknown) => (q === 'great' ? 3 : q === 'nice' ? 2 : q === 'ok' ? 1 : 0);
+    const avg = (score(r1) + score(r2)) / 2;
+    const quality: Quality = avg >= 3 ? 'great' : avg >= 2 ? 'nice' : avg >= 1 ? 'ok' : 'none';
+    this.duoWith = p;
+    try {
+      await this.useSkill(f, d, first.id, hard, quality);
+    } finally {
+      this.duoWith = null;
+    }
+  }
+
+  private duoWith: Fighter | null = null;
+
+  private async useSkill(f: Fighter, skill: SkillDef, target: string | undefined, hard: boolean, preset?: Quality): Promise<void> {
     const targets = this.targetsFor(f, skill, target);
     if (!targets.length) return;
     const steps: FxStep[] = [];
     const first = targets[0];
     const physical = skill.id === 'hammer' || skill.id === 'jump';
+    const duo = this.duoWith;
 
     // command minigame (the acting player's device)
-    let quality: Quality = 'ok';
+    let quality: Quality = preset ?? 'ok';
     let bounces = 1;
-    if (skill.command === 'jump') {
+    if (preset) { /* already played (duo moves) */ } else if (skill.command === 'jump') {
       const cap = skill.hits ?? 2;
       const r = await this.io.command(f.controller, { cmd: 'jump', actor: f.id, target: first.id, hits: cap, hard });
       bounces = Math.max(1, Math.min(cap, typeof r === 'number' ? r : 1));
@@ -324,7 +362,8 @@ export class BattleCore {
     }
 
     if (skill.kind === 'damage' || skill.kind === 'drain' || skill.kind === 'team') {
-      if (skill.target === 'enemy' || physical) steps.push({ t: 'approach', who: f.id, to: first.id, jump: skill.command === 'jump' });
+      if (skill.target === 'enemy' || physical || duo) steps.push({ t: 'approach', who: f.id, to: first.id, jump: skill.command === 'jump' });
+      if (duo) steps.push({ t: 'approach', who: duo.id, to: first.id, jump: true }, { t: 'anim', who: duo.id, anim: 'attack' });
       steps.push({ t: 'anim', who: f.id, anim: skill.command === 'jump' ? 'jump' : 'attack' });
       steps.push({ t: 'fx', name: skill.fx, at: skill.target === 'allEnemies' ? 'enemies' : first.id });
       for (const t of targets) {
@@ -372,8 +411,10 @@ export class BattleCore {
             steps.push({ t: 'miss', dst: t.id, text: '護盾擋下了！' }, { t: 'status', dst: t.id, status: 'shield', on: false });
             continue;
           }
+          // soaked paper goes soft: physical hits sink in deeper
+          let label = skill.command === 'jump' ? (h > 0 ? 'Nice!' : '') : Q_LABEL[quality];
+          if (this.has(t, 'wet') && PHYSICAL_FX.has(skill.fx)) { dmg = Math.round(dmg * 1.5); label = '濕軟！'; }
           t.hp = Math.max(0, t.hp - dmg);
-          const label = skill.command === 'jump' ? (h > 0 ? 'Nice!' : '') : Q_LABEL[quality];
           steps.push({ t: 'sfx', id: quality === 'great' ? 'crit' : physical && skill.id === 'jump' ? 'stomp' : 'hit' });
           steps.push({ t: 'hit', dst: t.id, dmg, label, crit: quality === 'great', hp: t.hp });
           // wake on hit
@@ -385,6 +426,7 @@ export class BattleCore {
           }
           if (skill.command === 'jump') t.jumpHits++;
           if (skill.status && t.hp > 0) this.tryStatus(t, skill.status, steps, quality);
+          if (t.hp > 0) this.paperElements(f, t, skill, quality, steps);
         }
         // airborne dragon falls after 2 stomps in a round
         if (t.enemyId === 'storm_dragon' && t.jumpHits >= 2 && t.groundedTurns <= 0 && t.hp > 0) {
@@ -393,6 +435,7 @@ export class BattleCore {
         }
       }
       steps.push({ t: 'return', who: f.id });
+      if (duo) steps.push({ t: 'return', who: duo.id });
     } else if (skill.kind === 'heal') {
       steps.push({ t: 'anim', who: f.id, anim: 'cast' }, { t: 'fx', name: skill.fx, at: targets[0].id });
       for (const t of targets) {
@@ -414,13 +457,35 @@ export class BattleCore {
   }
 
   calcDamage(src: Fighter, dst: Fighter, skill: SkillDef, q: Quality, hitIdx = 0): number {
-    const base = this.atkOf(src) + skill.power;
+    const base = this.atkOf(src) + (this.duoWith && src.side === 'party' ? this.atkOf(this.duoWith) : 0) + skill.power;
     const raw = Math.round(base * Q_MULT[q]) + (skill.command === 'jump' && hitIdx > 0 ? 0 : 0);
     const def = skill.pierce ? 0 : this.defOf(dst);
     return Math.max(1, raw - def);
   }
 
+  /**
+   * Paper elements: a great hammer blow crumples paper (defence down), paint and sea water soak it,
+   * and a perfect gust blows weakened paper enemies clean off the stage.
+   */
+  private paperElements(f: Fighter, t: Fighter, skill: SkillDef, q: Quality, steps: FxStep[]): void {
+    if (t.side !== 'enemy') return;
+    if (q === 'great' && (skill.id === 'hammer' || skill.fx === 'hammer') && !this.has(t, 'crumpled')) {
+      t.statuses.push({ type: 'crumpled', turns: 3, amount: 1 });
+      steps.push({ t: 'status', dst: t.id, status: 'crumpled', on: true }, { t: 'text', text: `${t.name} 被敲得皺巴巴！（防禦下降）`, ms: 700 });
+    }
+    if (skill.fx === 'paint' || skill.fx === 'bubble') this.tryStatus(t, { type: 'wet', turns: 3, chance: 1 }, steps, q);
+    const boss = t.traits.includes('boss');
+    if (skill.fx === 'wind' && q === 'great' && !boss && t.hp <= t.maxHP * 0.35) {
+      t.hp = 0;
+      steps.push({ t: 'text', text: `呼——！紙片做的 ${t.name} 被風吹出場外了！`, ms: 900 }, { t: 'hit', dst: t.id, dmg: 0, label: '吹走了！', hp: 0 });
+    }
+    void f;
+  }
+
   private tryStatus(t: Fighter, s: StatusSpec, steps: FxStep[], q: Quality = 'ok'): void {
+    // wet paper doesn't burn — and getting soaked puts a fire out
+    if (s.type === 'burn' && this.has(t, 'wet')) { steps.push({ t: 'text', text: '嘶～濕濕的紙燒不起來！', ms: 600 }); return; }
+    if (s.type === 'wet' && this.has(t, 'burn')) { t.statuses = t.statuses.filter((x) => x.type !== 'burn'); steps.push({ t: 'status', dst: t.id, status: 'burn', on: false }); }
     const bonus = q === 'great' ? 0.2 : q === 'nice' ? 0.1 : 0;
     const resist = t.traits.includes('boss') && ['sleep', 'dizzy', 'stuck'].includes(s.type) ? 0.35 : 1;
     if (Math.random() > (s.chance + bonus) * resist) return;
@@ -461,7 +526,7 @@ export class BattleCore {
       if (it.sp) { t.sp = Math.min(t.maxSP, t.sp + it.sp); }
       if (it.hp || it.sp) steps.push({ t: 'sfx', id: 'heal' }, { t: 'heal', dst: t.id, hp: it.hp, sp: it.sp, hpNow: t.hp, spNow: t.sp });
       if (it.kind === 'cure') {
-        const bad: StatusType[] = ['poison', 'burn', 'sleep', 'dizzy', 'stuck', 'atkDown', 'defDown', 'blind'];
+        const bad: StatusType[] = ['poison', 'burn', 'sleep', 'dizzy', 'stuck', 'atkDown', 'defDown', 'blind', 'wet', 'crumpled'];
         for (const s of t.statuses.filter((x) => bad.includes(x.type))) steps.push({ t: 'status', dst: t.id, status: s.type, on: false });
         t.statuses = t.statuses.filter((x) => !bad.includes(x.type));
       }
@@ -575,6 +640,8 @@ export class BattleCore {
         }
         if (move.kind !== 'status' || move.power > 0) {
           let dmg = Math.max(1, this.atkOf(e) + move.power - this.defOf(t));
+          // soaked paper heroes are soft too
+          if (this.has(t, 'wet')) dmg = Math.ceil(dmg * 1.3);
           if (t.statuses.some((s) => s.type === 'shield')) {
             t.statuses = t.statuses.filter((s) => s.type !== 'shield');
             steps.push({ t: 'miss', dst: t.id, text: '護盾擋下了！' }, { t: 'status', dst: t.id, status: 'shield', on: false });

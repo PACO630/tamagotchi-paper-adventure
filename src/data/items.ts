@@ -4,7 +4,7 @@ const items: ItemDef[] = [
   // Healing
   { id: 'apple', name: '紅蘋果', kind: 'heal', desc: '脆脆的蘋果。回復 5 HP。', icon: { shape: 'apple', color: '#ff0000' }, hp: 5, target: 'ally', fieldUse: true },
   { id: 'onigiri', name: '飯糰', kind: 'heal', desc: '大大的三角飯糰。回復 10 HP。', icon: { shape: 'cookie', color: '#ffffff', accent: '#000000' }, hp: 10, target: 'ally', fieldUse: true },
-  { id: 'cake', name: '草莓蛋糕', kind: 'heal', desc: '美美吉推薦！回復 20 HP。', icon: { shape: 'cake', color: '#ffc0e0', accent: '#ff0000' }, hp: 20, target: 'ally', fieldUse: true },
+  { id: 'cake', name: '草莓蛋糕', kind: 'heal', desc: '美眉吉推薦！回復 20 HP。', icon: { shape: 'cake', color: '#ffc0e0', accent: '#ff0000' }, hp: 20, target: 'ally', fieldUse: true },
   { id: 'feast', name: '豪華便當', kind: 'heal', desc: '大家一起吃！全隊回復 15 HP。', icon: { shape: 'cake', color: '#ff8040', accent: '#ffff00' }, hp: 15, target: 'allAllies', fieldUse: true },
   { id: 'juice', name: '星星果汁', kind: 'sp', desc: '冰涼果汁。回復 5 技能點數。', icon: { shape: 'bottle', color: '#ff8040' }, sp: 5, target: 'ally', fieldUse: true },
   { id: 'star_candy', name: '星星糖', kind: 'sp', desc: '亮晶晶的糖果。回復 12 技能點數。', icon: { shape: 'star', color: '#ffff00' }, sp: 12, target: 'ally', fieldUse: true },
@@ -34,7 +34,7 @@ const items: ItemDef[] = [
   { id: 'b_light', name: '心之光徽章', kind: 'badge', desc: '最大 HP +10、技能點數 +5。只有溫柔的人才能得到。', icon: { shape: 'badge', color: '#ffffff', accent: '#ff80c0' }, badge: { maxHP: 10, maxSP: 5 } },
   { id: 'b_shadow', name: '暗影徽章', kind: 'badge', desc: '攻擊力 +3，但防禦力 -1。', icon: { shape: 'badge', color: '#202020', accent: '#8000ff' }, badge: { atk: 3, def: -1 } },
   // Key items
-  { id: 'star_sensor', name: '星之感應器', kind: 'key', desc: '麻美吉發明的裝置，能感應星之心碎片的方向。', icon: { shape: 'gear', color: '#ffd700', accent: '#0080ff' } },
+  { id: 'star_sensor', name: '星之感應器', kind: 'key', desc: '麻每吉發明的裝置，能感應星之心碎片的方向。', icon: { shape: 'gear', color: '#ffd700', accent: '#0080ff' } },
   { id: 'village_bell', name: '村莊的小鈴鐺', kind: 'key', desc: '村長的鈴鐺，搖一搖可以讓大家想起回家的路。', icon: { shape: 'ring', color: '#ffd700' } },
   { id: 'candy_compass', name: '糖果指南針', kind: 'key', desc: '指向糖果森林深處的指南針。', icon: { shape: 'candy', color: '#ff80c0', accent: '#ffffff' } },
   { id: 'wind_feather', name: '風之羽毛', kind: 'key', desc: '能夠乘著上升氣流的神奇羽毛。', icon: { shape: 'feather', color: '#80ffff' } },

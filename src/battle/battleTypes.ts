@@ -35,13 +35,15 @@ export type Quality = 'great' | 'nice' | 'ok' | 'none';
 export type GuardResult = 'perfect' | 'good' | 'fail';
 
 export interface MenuChoice {
-  kind: 'hammer' | 'jump' | 'skill' | 'item' | 'defend' | 'flee' | 'team';
+  kind: 'hammer' | 'jump' | 'skill' | 'item' | 'defend' | 'flee' | 'team' | 'duo';
   skill?: string;
+  /** duo moves: the party member who joins in */
+  partner?: string;
   item?: string;
   target?: string;
 }
 
-export interface CommandSpec { cmd: 'timing' | 'mash' | 'sequence' | 'jump' | 'none'; actor: string; target?: string; hits?: number; hard: boolean; len?: number }
+export interface CommandSpec { cmd: 'timing' | 'mash' | 'sequence' | 'jump' | 'hold' | 'swipe' | 'rhythm' | 'aim' | 'none'; actor: string; target?: string; hits?: number; hard: boolean; len?: number }
 
 /** Visual steps the scene plays in order. */
 export type FxStep =

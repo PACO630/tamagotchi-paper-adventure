@@ -68,6 +68,7 @@ export const ch3: ChapterDef = {
     { id: 'e3e', enemy: 'gale_bird', party: ['gale_bird', 'gale_bird', 'sky_beetle'], x: 5350, z: 120, ai: 'chaser' },
   ],
   chests: [
+    { id: 'c3_px1', x: 4300, z: 220, items: [{ id: 'elixir', qty: 1 }], world: 'pixel' },
     { id: 'c3_1', x: 600, z: 40, items: [{ id: 'sticker_7', qty: 1 }] },
     { id: 'c3_h1', x: 1550, z: 200, items: [{ id: 'cloud_cotton', qty: 1 }, { id: 'star_candy', qty: 1 }], hidden: true },
     { id: 'c3_2', x: 2650, z: 40, items: [{ id: 'cloud_cotton', qty: 1 }, { id: 'sticker_8', qty: 1 }] },
@@ -76,6 +77,7 @@ export const ch3: ChapterDef = {
     { id: 'c3_h3', x: 5320, z: 200, items: [{ id: 'sticker_9', qty: 1 }, { id: 'elixir', qty: 1 }], hidden: true },
   ],
   objects: [
+    { id: 'sign_egg3', type: 'sign', x: 3440, z: 215, text: '雲斷掉了。像素世界裡有兩朵飄來飄去的像素雲……抓準時機跳上去！' },
     { id: 'sign31', type: 'sign', x: 450, z: 160, text: '注意：強風區會把你往旁邊推。羽毛能讓你在風中跳得更遠。' },
     { id: 'save31', type: 'savepoint', x: 1300, z: 80 },
     { id: 'gate31', type: 'gate', x: 1980, z: 0, cond: 'item:wind_feather', w: 1 },
@@ -88,12 +90,16 @@ export const ch3: ChapterDef = {
     { id: 'shard3', type: 'shard', x: 6200, z: 120, showIf: 'boss3&!shard3_got' },
   ],
   zones: [
+    { type: 'pit', x: 3480, w: 180, z0: 0, z1: 240, look: 'sky' },
     { type: 'pit', x: 2100, w: 500, z0: 0, z1: 240, look: 'sky' },
     { type: 'wind', x: 2950, w: 400, fx: -90 },
     { type: 'wind', x: 3800, w: 300, fz: 60 },
     { type: 'pit', x: 4900, w: 350, z0: 0, z1: 240, look: 'sky' },
   ],
   platforms: [
+    // only in the egg device: two pixel clouds drifting back and forth over the gap
+    { id: 'px31', x: 3525, z: 120, w: 100, d: 80, dz: 60, period: 3.0, look: 'pixel', world: 'pixel' },
+    { id: 'px32', x: 3615, z: 120, w: 100, d: 80, dz: -60, period: 3.4, look: 'pixel', world: 'pixel' },
     { id: 'cl1', x: 2170, z: 120, w: 120, d: 60, dx: 60, period: 3.0, look: 'cloud' },
     { id: 'cl2', x: 2340, z: 100, w: 120, d: 60, dz: 90, period: 3.6, look: 'cloud' },
     { id: 'cl3', x: 2500, z: 130, w: 120, d: 60, dx: -50, period: 2.8, look: 'cloud' },

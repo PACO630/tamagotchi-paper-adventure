@@ -73,7 +73,7 @@ export function pickSlot(mode: 'new' | 'any'): Promise<SaveData | null> {
     const build = async () => {
       card.innerHTML = '';
       card.append(h('h2', {}, mode === 'new' ? '選擇存檔欄位（新遊戲）' : '單人模式：選擇存檔'));
-      card.append(h('p', { class: 'muted' }, '單人模式固定使用麻美吉展開冒險。'));
+      card.append(h('p', { class: 'muted' }, '單人模式固定使用麻每吉展開冒險。'));
       const slots = await saves.listSlots();
       const grid = h('div', { class: 'slot-grid' });
       slots.forEach((s, i) => {

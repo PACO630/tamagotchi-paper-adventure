@@ -66,7 +66,7 @@ export async function playEnding(): Promise<void> {
     g.imageSmoothingEnabled = false;
     g.drawImage(f, 40 + i * 110, back ? 250 : 300, back ? 150 : 170, back ? 150 : 170);
   });
-  const et = renderFrame({ npc: { color: '#ffffc0', accent: '#4000c0', ears: 'horn', hat: 'crown' } }, basePose({ facing: 'front', expr: 'happy' }), 'photoEt');
+  const et = renderFrame({ npc: { species: 'eternatchi', color: '#fffbe6', accent: '#5b35b5' } }, basePose({ facing: 'front', expr: 'happy' }), 'photoEt');
   g.drawImage(et, 400, 160, 150, 150);
   g.fillStyle = 'rgba(255,255,255,0.9)';
   g.font = 'bold 30px sans-serif';

@@ -20,9 +20,9 @@ const ROOM_PROPS: PropDef[] = [
   { t: 'castle_window', x: ROOM_X + 1100, z: -20, layer: 'back' }, { t: 'bookshelf', x: ROOM_X + 1350, z: -10, layer: 'back' }, { t: 'candelabra', x: ROOM_X + 1650, z: 20 },
   { t: 'banner', x: ROOM_X + 1800, z: -30, layer: 'back' }, { t: 'mirror', x: ROOM_X + 1900, z: 0 },
 ];
-const PORTRAIT_QUEEN: NpcLook = { color: '#ffd0f0', accent: '#a040c0', ears: 'bunny', hat: 'crown' };
-const PORTRAIT_KNIGHT: NpcLook = { color: '#c0c8e0', accent: '#4060c0', ears: 'pointy', hat: 'helmet' };
-const PORTRAIT_YOUNG: NpcLook = { color: '#ffffc0', accent: '#4000c0', ears: 'horn', hat: 'crown' };
+const PORTRAIT_QUEEN: NpcLook = { species: 'furawatchi', color: '#ffa6d4', accent: '#a040c0', hat: 'crown' };
+const PORTRAIT_KNIGHT: NpcLook = { species: 'robotchi', color: '#c2c6d0', accent: '#4060c0' };
+const PORTRAIT_YOUNG: NpcLook = { species: 'young_eter', color: '#fffbe6', accent: '#5b35b5' };
 
 const CLUES_DONE = 'ch6_clue1&ch6_clue2&ch6_clue3';
 
@@ -59,7 +59,7 @@ const QUIZ: Script = [
 
 export const ch6: ChapterDef = {
   id: 'ch6', num: 6, title: '第六章：夢幻城堡', location: '夢幻城堡',
-  summary: '這座城堡保存著拓麻歌子世界的歷史。在這裡，麻美吉將知道「王冠之人」真正的名字。',
+  summary: '這座城堡保存著拓麻歌子世界的歷史。在這裡，麻每吉將知道「王冠之人」真正的名字。',
   music: 'castle', weather: 'dust', width: 6600, start: { x: 180, z: 130 }, grey: -0.6,
   theme: {
     id: 'castle', skyTop: 0x2a1a4a, skyBottom: 0x8a5a9a, far: 0x5a4a7a, farAccent: 0x8a6ad8, mid: 0x6a5a8a, midAccent: 0xffc84a,
@@ -126,6 +126,7 @@ export const ch6: ChapterDef = {
     { id: 'e6e', enemy: 'sheet_ghost', party: ['sheet_ghost', 'empty_armor', 'candle_imp'], x: 5550, z: 170, ai: 'ambush' },
   ],
   chests: [
+    { id: 'c6_px1', x: 1700, z: 60, items: [{ id: 'cake', qty: 1 }, { id: 'star_candy', qty: 1 }], world: 'pixel' },
     { id: 'c6_1', x: 550, z: 50, items: [{ id: 'sticker_16', qty: 1 }] },
     { id: 'c6_h1', x: 1700, z: 200, items: [{ id: 'candle', qty: 1 }], hidden: true },
     { id: 'c6_secret', x: 2200, z: 120, items: [{ id: 'sticker_17', qty: 1 }, { id: 'b_star', qty: 1 }], showIf: 'ch6_secret' },
@@ -135,6 +136,13 @@ export const ch6: ChapterDef = {
     { id: 'c6_room', x: ROOM_X + 1880, z: 200, items: [{ id: 'elixir', qty: 1 }, { id: 'sticker_18', qty: 1 }], hidden: true },
   ],
   objects: [
+    // signs that only exist in the egg device's world
+    { id: 'px_door_a', type: 'sign', x: 2700, z: 215, text: '✕ 這扇門是假的，只會把你送回原地。', world: 'pixel' },
+    { id: 'px_door_b', type: 'sign', x: 2850, z: 150, text: '✕ 這扇也是假的。', world: 'pixel' },
+    { id: 'px_door_c', type: 'sign', x: 3010, z: 70, text: '○ 真正的出口，是最裡面的門。', world: 'pixel' },
+    { id: 'sign_egg6', type: 'sign', x: 2540, z: 215, text: '鏡子裡的門分不清真假……試試看用蛋機照照看？' },
+    { id: 'eggw61', type: 'egg_wall', x: 5450, z: 0, w: 1, world: 'paper' },
+    { id: 'eggw62', type: 'egg_wall', x: 5585, z: 0, w: 1, world: 'pixel' },
     { id: 'sign61', type: 'sign', x: 380, z: 170, text: '「鏡子不會說謊，但也不會說出全部的真相。」' },
     { id: 'save61', type: 'savepoint', x: 1100, z: 60 },
     { id: 'secret_wall', type: 'breakable', x: 2150, z: 40, flag: 'ch6_secret' },

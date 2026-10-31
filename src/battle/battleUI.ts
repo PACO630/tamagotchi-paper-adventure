@@ -3,7 +3,7 @@ import { G } from '../core/game';
 import { portraitURL } from '../art/textures';
 import { iconURL } from '../art/iconArt';
 import { ITEMS } from '../data/items';
-import { SKILLS } from '../data/skills';
+import { DUOS, DUO_COST, SKILLS } from '../data/skills';
 import { input } from '../input/input';
 import { audio } from '../systems/audio';
 import { h, iconLabel, statBar, uiRoot } from '../ui/dom';
@@ -126,15 +126,33 @@ class BattleUI {
       const top = () => {
         ctx.highlight(f.id);
         const opts = [
-          { label: '[hammer]鎚子攻擊', hint: '時機按下確認可增加傷害。打不到飛行的敵人。', act: () => pickTarget('enemy', (id) => finish({ kind: 'hammer', target: id }), top) },
+          { label: '[hammer]鎚子攻擊', hint: '時機按下確認可增加傷害，Great 會把敵人敲皺（防禦下降）。打不到飛行的敵人。', act: () => pickTarget('enemy', (id) => finish({ kind: 'hammer', target: id }), top) },
           { label: '[shoe]跳躍攻擊', hint: '落地時按確認可連續踩。不能踩刺刺的敵人。', act: () => pickTarget('enemy', (id) => finish({ kind: 'jump', target: id }), top) },
           { label: '[sparkle]技能', sub: `SP ${f.sp}`, hint: '使用角色的特殊技能。', act: skills },
+          ...(duoPartners().length ? [{ label: '[duo]合體技', sub: `SP ${DUO_COST}+${DUO_COST}`, hint: '和夥伴一起完成兩段指令，放出強力的合體招式！兩個人都要消耗技能點數。', act: duos }] : []),
           { label: '[bag]道具', hint: '使用背包裡的道具。', act: itemsMenu },
           { label: '[shield]防禦', hint: '本回合防禦力 +1，並回復 1 技能點數。', act: () => finish({ kind: 'defend' }) },
           { label: '[run]逃跑', disabled: ctx.boss, hint: ctx.boss ? 'Boss 戰無法逃跑！' : '有機會離開戰鬥。', act: () => finish({ kind: 'flee' }) },
         ];
         if (ctx.teamUnlocked) opts.unshift({ label: '[star]星之心合奏', hint: '所有夥伴的力量合而為一！唯一能突破永恆之壁的招式。', act: () => finish({ kind: 'team' }) });
         render(`${f.name} 的回合`, opts, null);
+      };
+
+      const duoPartners = () => ctx.party.filter((p) => p.id !== f.id && p.hp > 0 && p.charId && DUOS[p.charId]);
+      const duos = () => {
+        const list = duoPartners().map((p) => {
+          const d = DUOS[p.charId!]!;
+          const tired = p.statuses.some((s) => s.type === 'sleep' || s.type === 'dizzy');
+          const low = f.sp < DUO_COST || p.sp < DUO_COST;
+          return {
+            label: d.name, sub: `與 ${p.name}`, disabled: tired || low, hint: tired ? `${p.name} 現在沒辦法配合！` : low ? `兩個人都需要 ${DUO_COST} 技能點數。` : d.desc,
+            act: () => {
+              if (d.target === 'enemy') pickTarget('enemy', (id) => finish({ kind: 'duo', partner: p.id, target: id }), duos);
+              else finish({ kind: 'duo', partner: p.id });
+            },
+          };
+        });
+        render('合體技', list, top);
       };
 
       const skills = () => {

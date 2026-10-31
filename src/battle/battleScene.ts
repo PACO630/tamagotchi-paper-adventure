@@ -15,10 +15,10 @@ import { ensureUiIconTexture, type UiIconName } from '../art/uiIcons';
 import type { CommandSpec, Fighter, FxStep, GuardResult, Quality } from './battleTypes';
 
 const STATUS_ICON: Partial<Record<StatusType, UiIconName>> = {
-  poison: 'skull', burn: 'fire', sleep: 'zzz', dizzy: 'spiral', stuck: 'chain', atkUp: 'atkUp', atkDown: 'atkDown', defUp: 'defUp', defDown: 'defDown', regen: 'regen', shield: 'diamond', blind: 'blind',
+  poison: 'skull', burn: 'fire', sleep: 'zzz', dizzy: 'spiral', stuck: 'chain', atkUp: 'atkUp', atkDown: 'atkDown', defUp: 'defUp', defDown: 'defDown', regen: 'regen', shield: 'diamond', blind: 'blind', wet: 'drop', crumpled: 'crumple',
 };
 const STATUS_NAME: Partial<Record<StatusType, string>> = {
-  poison: '中毒', burn: '燒傷', sleep: '睡著', dizzy: '頭暈', stuck: '纏住', atkUp: '攻擊上升', atkDown: '攻擊下降', defUp: '防禦上升', defDown: '防禦下降', regen: '回復', shield: '護盾', blind: '失明',
+  poison: '中毒', burn: '燒傷', sleep: '睡著', dizzy: '頭暈', stuck: '纏住', atkUp: '攻擊上升', atkDown: '攻擊下降', defUp: '防禦上升', defDown: '防禦下降', regen: '回復', shield: '護盾', blind: '失明', wet: '濕透了', crumpled: '皺巴巴',
 };
 
 interface View {
@@ -569,6 +569,10 @@ export class BattleScene extends Phaser.Scene {
         audio.sfx(q === 'great' ? 'perfect' : 'confirm');
         return q;
       }
+      case 'hold': return this.holdCommand(spec, k);
+      case 'swipe': return this.swipeCommand(spec, k);
+      case 'rhythm': return this.rhythmCommand(spec, k);
+      case 'aim': return this.aimCommand(spec, k);
       case 'jump': {
         // press right as the character lands on the enemy's head
         const tip = this.promptText(this.touchUI ? '落地瞬間點畫面，再踩一次！' : '落地瞬間按下 確認 再踩一次！');
@@ -586,6 +590,243 @@ export class BattleScene extends Phaser.Scene {
       default:
         return 'ok';
     }
+  }
+
+  private judge(q: Quality): Quality {
+    audio.sfx(q === 'great' ? 'perfect' : q === 'nice' ? 'nice' : 'miss');
+    if (q !== 'none') this.popText(GAME_W / 2, 236, q === 'great' ? 'Great!' : q === 'nice' ? 'Nice!' : 'OK', q === 'great' ? '#ffd23a' : '#fffdf6');
+    return q;
+  }
+
+  /** Confirm-type keys, for commands that need to know when the button is released. */
+  private static HOLD_KEYS = new Set(['Enter', 'NumpadEnter', 'Space', 'KeyJ', 'KeyX', 'KeyE', 'KeyZ']);
+
+  private toGame(clientX: number, clientY: number): { x: number; y: number } {
+    const r = this.game.canvas.getBoundingClientRect();
+    return { x: ((clientX - r.left) / r.width) * this.scale.width, y: ((clientY - r.top) / r.height) * this.scale.height };
+  }
+
+  /** 按住放開: hold to charge, let go inside the green zone. */
+  private holdCommand(_spec: CommandSpec, k: number): Promise<Quality> {
+    const W = 420, x0 = GAME_W / 2 - W / 2, y = 280;
+    const zw = 0.13 * k, z0 = 0.6 + Math.random() * (0.32 - zw);
+    const tip = this.promptText(this.touchUI ? '按住畫面集氣，在綠色區域放開！' : '按住 確認 集氣，在綠色區域放開！');
+    const bg = this.add.rectangle(GAME_W / 2, y, W + 10, 36, 0xfffdf6).setStrokeStyle(4, 0x3a2a1a).setDepth(1250);
+    const zone = this.add.rectangle(x0 + z0 * W, y, zw * W, 26, 0x4ae06a).setOrigin(0, 0.5).setDepth(1251);
+    const bar = this.add.rectangle(x0, y, 0, 18, 0xff8a3a).setOrigin(0, 0.5).setDepth(1252);
+    const needle = this.add.rectangle(x0, y, 6, 44, 0x3a2a1a).setDepth(1253);
+    return new Promise((resolve) => {
+      let held = false, fill = 0, done = false;
+      const offPress = input.onPress((b) => {
+        if (b !== 'confirm' && b !== 'attack' && b !== 'jump') return false;
+        if (!held && !done) { held = true; audio.sfx('buff'); }
+        return true;
+      });
+      const release = () => {
+        if (!held || done) return;
+        finish(fill >= z0 && fill <= z0 + zw ? 'great' : fill >= z0 - 0.08 && fill <= z0 + zw + 0.05 ? 'nice' : 'ok');
+      };
+      const onKeyUp = (e: KeyboardEvent) => { if (BattleScene.HOLD_KEYS.has(e.code)) release(); };
+      const onPtrUp = () => release();
+      window.addEventListener('keyup', onKeyUp);
+      window.addEventListener('pointerup', onPtrUp, { capture: true });
+      window.addEventListener('pointercancel', onPtrUp, { capture: true });
+      const tick = this.time.addEvent({
+        delay: 16, loop: true, callback: () => {
+          if (!held || done) return;
+          fill += 0.016 / 1.15;
+          bar.width = W * Math.min(1, fill);
+          needle.x = x0 + W * Math.min(1, fill);
+          if (fill >= 1.02) finish('none'); // over-charged
+        },
+      });
+      const giveUp = this.time.delayedCall(3200, () => { if (!held) finish('none'); });
+      const finish = (q: Quality) => {
+        if (done) return;
+        done = true;
+        offPress(); tick.remove(); giveUp.remove();
+        window.removeEventListener('keyup', onKeyUp);
+        window.removeEventListener('pointerup', onPtrUp, { capture: true });
+        window.removeEventListener('pointercancel', onPtrUp, { capture: true });
+        if (q === 'great') zone.setFillStyle(0xffd23a);
+        this.time.delayedCall(220, () => { tip.destroy(); bg.destroy(); zone.destroy(); bar.destroy(); needle.destroy(); });
+        resolve(this.judge(q));
+      };
+    });
+  }
+
+  /** 畫線摺紙: drag along the dashed fold line (keyboard: press the arrow it points to). */
+  private swipeCommand(spec: CommandSpec, k: number): Promise<Quality> {
+    const target = spec.target ? this.views.get(spec.target) : undefined;
+    const cx = target?.c.x ?? GAME_W / 2, cy = target ? this.headY(target) + 40 : 360;
+    const dirs: { a: number; key: Btn }[] = [{ a: 0, key: 'right' }, { a: Math.PI, key: 'left' }, { a: Math.PI / 2, key: 'down' }, { a: -Math.PI / 2, key: 'up' }, { a: 0.55, key: 'right' }, { a: Math.PI - 0.55, key: 'left' }];
+    const pick = dirs[Math.floor(Math.random() * dirs.length)];
+    const half = 115;
+    const sx = cx - Math.cos(pick.a) * half, sy = cy - Math.sin(pick.a) * half;
+    const ex = cx + Math.cos(pick.a) * half, ey = cy + Math.sin(pick.a) * half;
+    const g = this.add.graphics().setDepth(1250);
+    for (const [w, c] of [[12, 0x3a2a1a], [6, 0xfffdf6]] as [number, number][]) {
+      g.lineStyle(w, c, 1);
+      for (let i = 0; i < 12; i += 2) {
+        const t0 = i / 12, t1 = (i + 1) / 12;
+        g.lineBetween(sx + (ex - sx) * t0, sy + (ey - sy) * t0, sx + (ex - sx) * t1, sy + (ey - sy) * t1);
+      }
+    }
+    const startDot = this.add.circle(sx, sy, 20, 0x4ae06a).setStrokeStyle(4, 0x3a2a1a).setDepth(1251);
+    const endDot = this.add.circle(ex, ey, 20, 0xff8ac4).setStrokeStyle(4, 0x3a2a1a).setDepth(1251);
+    this.tweens.add({ targets: startDot, scale: 1.25, yoyo: true, repeat: -1, duration: 260 });
+    const keyIcon = this.add.image(GAME_W / 2, 300, ensureUiIconTexture(this, pick.key as UiIconName)).setDisplaySize(56, 56).setDepth(1252).setVisible(!this.touchUI);
+    const tip = this.promptText(this.touchUI ? '從綠點沿著虛線劃到粉紅點，把敵人摺起來！' : '沿著虛線把敵人摺起來！按下圖示的方向鍵（滑鼠也可以拖曳）');
+    const trail = this.add.graphics().setDepth(1252);
+    const limit = (spec.hard ? 1900 : 2800);
+    const t0 = performance.now();
+    // drags must not also count as taps
+    this.tapWanted = false;
+    return new Promise((resolve) => {
+      let done = false, dragging = false;
+      const pts: { x: number; y: number }[] = [];
+      const offPress = input.onPress((b) => {
+        if (b === pick.key) { const dt = performance.now() - t0; finish(dt < 700 / k ? 'great' : dt < 1300 / k ? 'nice' : 'ok'); return true; }
+        if (['up', 'down', 'left', 'right'].includes(b)) { finish('ok'); return true; }
+        return b === 'confirm' || b === 'attack' || b === 'jump';
+      });
+      const onDown = (e: PointerEvent) => {
+        const p = this.toGame(e.clientX, e.clientY);
+        if (Math.hypot(p.x - sx, p.y - sy) < 70) { dragging = true; pts.length = 0; pts.push(p); }
+      };
+      const onMove = (e: PointerEvent) => {
+        if (!dragging) return;
+        const p = this.toGame(e.clientX, e.clientY);
+        pts.push(p);
+        trail.clear().lineStyle(8, 0xffd23a, 1).beginPath();
+        pts.forEach((q, i) => (i ? trail.lineTo(q.x, q.y) : trail.moveTo(q.x, q.y)));
+        trail.strokePath();
+      };
+      const onUp = () => {
+        if (!dragging || done) return;
+        dragging = false;
+        const last = pts[pts.length - 1];
+        if (!last || Math.hypot(last.x - ex, last.y - ey) > 75) { finish('ok'); return; }
+        // average distance from the fold line
+        const lx = ex - sx, ly = ey - sy, len = Math.hypot(lx, ly);
+        const dev = pts.reduce((a, q) => a + Math.abs(((q.x - sx) * ly - (q.y - sy) * lx) / len), 0) / pts.length;
+        finish(dev < 20 / k ? 'great' : dev < 42 / k ? 'nice' : 'ok');
+      };
+      window.addEventListener('pointerdown', onDown, { capture: true });
+      window.addEventListener('pointermove', onMove, { capture: true });
+      window.addEventListener('pointerup', onUp, { capture: true });
+      const timeout = this.time.delayedCall(limit, () => finish(pts.length > 3 ? 'ok' : 'none'));
+      const finish = (q: Quality) => {
+        if (done) return;
+        done = true;
+        offPress(); timeout.remove();
+        window.removeEventListener('pointerdown', onDown, { capture: true });
+        window.removeEventListener('pointermove', onMove, { capture: true });
+        window.removeEventListener('pointerup', onUp, { capture: true });
+        this.tweens.killTweensOf(startDot);
+        if (q === 'great' || q === 'nice') {
+          // the fold: a quick white flash along the line
+          const fold = this.add.graphics().setDepth(1253).lineStyle(14, 0xffffff, 1).lineBetween(sx, sy, ex, ey);
+          this.tweens.add({ targets: fold, alpha: 0, duration: 380, onComplete: () => fold.destroy() });
+          audio.sfx('flip');
+        }
+        this.time.delayedCall(200, () => { g.destroy(); startDot.destroy(); endDot.destroy(); keyIcon.destroy(); tip.destroy(); trail.destroy(); });
+        resolve(this.judge(q));
+      };
+    });
+  }
+
+  /** 節奏: notes slide into the ring to the beat — hit each one as it arrives. */
+  private rhythmCommand(spec: CommandSpec, k: number): Promise<Quality> {
+    const n = Math.max(3, Math.min(6, (spec.len ?? 4)));
+    const beat = spec.hard ? 430 : 520;
+    const y = 285, hitX = GAME_W / 2 - 190, startX = GAME_W / 2 + 330;
+    const lead = beat * 3;
+    const tip = this.promptText(this.touchUI ? '音符碰到圓圈時，跟著節拍點畫面！' : '音符碰到圓圈時，跟著節拍按 確認！');
+    const lane = this.add.rectangle(GAME_W / 2 + 70, y, 560, 46, 0xfffdf6, 0.85).setStrokeStyle(4, 0x3a2a1a).setDepth(1249);
+    const ring = this.add.circle(hitX, y, 24, 0xffffff, 0.3).setStrokeStyle(5, 0xff8ac4).setDepth(1250);
+    const t0 = performance.now();
+    const notes = Array.from({ length: n }, (_, i) => {
+      const at = lead + i * beat;
+      const o = this.add.text(startX, y, '♪', { fontFamily: FONT, fontSize: '34px', color: '#7a5ad8', stroke: '#fffdf6', strokeThickness: 5 }).setOrigin(0.5).setDepth(1251);
+      this.tweens.add({ targets: o, x: hitX - (startX - hitX) * 0.25, duration: at * 1.25, ease: 'Linear' });
+      return { at, o, judged: false };
+    });
+    // count-in ticks
+    for (let i = 0; i < 3; i++) this.time.delayedCall(i * beat, () => audio.sfx('click', 0.8));
+    return new Promise((resolve) => {
+      let great = 0, nice = 0, done = false;
+      const mark = (nt: typeof notes[number], q: 'great' | 'nice' | 'miss') => {
+        nt.judged = true;
+        this.tweens.killTweensOf(nt.o);
+        nt.o.setColor(q === 'great' ? '#ffb000' : q === 'nice' ? '#4ac86a' : '#c0c0c0');
+        this.tweens.add({ targets: nt.o, y: y - 40, alpha: 0, duration: 300, onComplete: () => nt.o.destroy() });
+        if (q !== 'miss') { this.tweens.add({ targets: ring, scale: 1.3, yoyo: true, duration: 90 }); audio.sfx(q === 'great' ? 'perfect' : 'nice', 1 + great * 0.06); }
+      };
+      const off = input.onPress((b) => {
+        if (b !== 'confirm' && b !== 'attack' && b !== 'jump') return false;
+        const t = performance.now() - t0;
+        const nt = notes.find((x) => !x.judged && Math.abs(x.at - t) < 260);
+        if (!nt) { audio.sfx('miss'); return true; }
+        const offT = Math.abs(nt.at - t);
+        if (offT < 80 * k) { great++; mark(nt, 'great'); } else if (offT < 170 * k) { nice++; mark(nt, 'nice'); } else mark(nt, 'miss');
+        return true;
+      });
+      const watch = this.time.addEvent({
+        delay: 30, loop: true, callback: () => {
+          const t = performance.now() - t0;
+          for (const nt of notes) if (!nt.judged && t > nt.at + 260) mark(nt, 'miss');
+          if (!done && notes.every((x) => x.judged)) finish();
+        },
+      });
+      const finish = () => {
+        done = true;
+        off(); watch.remove();
+        this.time.delayedCall(320, () => { tip.destroy(); lane.destroy(); ring.destroy(); notes.forEach((x) => x.o.destroy()); });
+        const score = great + nice * 0.6;
+        resolve(this.judge(great === n ? 'great' : score >= n * 0.6 ? 'nice' : score > 0 ? 'ok' : 'none'));
+      };
+    });
+  }
+
+  /** 瞄準: the sight drifts around — fire when it is on the bullseye. */
+  private aimCommand(spec: CommandSpec, k: number): Promise<Quality> {
+    const target = spec.target ? this.views.get(spec.target) : undefined;
+    const tx = target?.c.x ?? GAME_W / 2, ty = target ? this.headY(target) + 30 : 340;
+    const tip = this.promptText(this.touchUI ? '準星對準紅心的瞬間，點畫面！' : '準星對準紅心的瞬間，按 確認！');
+    const rings = [this.add.circle(tx, ty, 44, 0xffffff, 0.35).setStrokeStyle(4, 0xffffff).setDepth(1250), this.add.circle(tx, ty, 16, 0xff4a6a, 0.9).setStrokeStyle(3, 0xffffff).setDepth(1250)];
+    const sight = this.add.container(tx, ty).setDepth(1252);
+    const sg = this.add.graphics();
+    sg.lineStyle(5, 0x3a2a1a, 1).strokeCircle(0, 0, 22).lineBetween(-34, 0, -10, 0).lineBetween(10, 0, 34, 0).lineBetween(0, -34, 0, -10).lineBetween(0, 10, 0, 34);
+    sg.lineStyle(2.5, 0xffd23a, 1).strokeCircle(0, 0, 22);
+    sight.add(sg);
+    const sp = (spec.hard ? 1.45 : 1) * (0.9 + Math.random() * 0.25);
+    const ph = Math.random() * 6;
+    const t0 = performance.now();
+    const mover = this.time.addEvent({
+      delay: 16, loop: true, callback: () => {
+        const t = (performance.now() - t0) / 1000;
+        sight.setPosition(tx + Math.sin(t * 2.3 * sp + ph) * 95, ty + Math.sin(t * 3.4 * sp + ph * 2) * 62);
+      },
+    });
+    return new Promise((resolve) => {
+      let done = false;
+      const off = input.onPress((b) => {
+        if (b !== 'confirm' && b !== 'attack' && b !== 'jump') return false;
+        const d = Math.hypot(sight.x - tx, sight.y - ty);
+        finish(d < 15 / k ? 'great' : d < 38 / k ? 'nice' : 'ok');
+        return true;
+      });
+      const timeout = this.time.delayedCall(3400, () => finish('none'));
+      const finish = (q: Quality) => {
+        if (done) return;
+        done = true;
+        off(); mover.remove(); timeout.remove();
+        if (q !== 'none') { const boom = this.add.circle(sight.x, sight.y, 10, 0xffd23a).setDepth(1253); this.tweens.add({ targets: boom, radius: 46, alpha: 0, duration: 260, onComplete: () => boom.destroy() }); }
+        this.time.delayedCall(240, () => { tip.destroy(); rings.forEach((r) => r.destroy()); sight.destroy(); });
+        resolve(this.judge(q));
+      };
+    });
   }
 
   /** Guard command for the targeted local player. */

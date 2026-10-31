@@ -20,7 +20,7 @@ const FREE = (a: string, b: string, x: number, flag: string, lines: Script): Scr
 
 export const ch7: ChapterDef = {
   id: 'ch7', num: 7, title: '第七章：黑暗異世界', location: '黑暗異世界',
-  summary: '被黑暗扭曲的世界。一踏進來，夥伴們就被帶走了。這裡住著大家的影子，還有另一個麻美吉。',
+  summary: '被黑暗扭曲的世界。一踏進來，夥伴們就被帶走了。這裡住著大家的影子，還有另一個麻每吉。',
   music: 'dark', weather: 'darkmotes', width: 6600, start: { x: 180, z: 130 }, grey: -0.3,
   theme: {
     id: 'dark', skyTop: 0x0a0414, skyBottom: 0x3a1a4a, far: 0x2a1a3a, farAccent: 0x8a3aff, mid: 0x3a2a4a, midAccent: 0xc86aff,
@@ -78,23 +78,23 @@ export const ch7: ChapterDef = {
       { if: 'quest:s7_lost', script: [L('lost_light', '我會跟在你們後面……走到最亮的地方。', 'normal')] },
       { script: [L('lost_light', '謝謝你們陪我走到這裡。', 'happy')] },
     ] },
-    { id: 'dark_kuchi_npc', name: '黑暗庫奇帕奇', look: 'kuchipatchi', dark: true, x: 1900, z: 120, showIf: '!ch7_kuchi_done', talk: [{ script: [
+    { id: 'dark_kuchi_npc', name: '黑暗大嘴吉', look: 'kuchipatchi', dark: true, x: 1900, z: 120, showIf: '!ch7_kuchi_done', talk: [{ script: [
       L('dark_kuchi_npc', '肚子……永遠都不會飽……吃再多也一樣……你的朋友，在我肚子裡面喔……', 'angry'),
-      L('hero', '把庫奇帕奇和假面吉還來！', 'angry'),
+      L('hero', '把大嘴吉和假面吉還來！', 'angry'),
       QS('q7_mirror_friends'),
       { do: 'battle', encounter: ['dark_kuchi', 'shadow_blob'], flag: 'ch7_kuchi_done' },
       ...FREE('kuchipatchi', 'maskutchi', 1900, 'ch7_free1', [
-        L('kuchipatchi', '麻美吉！我在黑暗裡一直好餓好餓……可是我想到，要和大家一起吃飯才會飽！', 'happy'),
+        L('kuchipatchi', '麻每吉！我在黑暗裡一直好餓好餓……可是我想到，要和大家一起吃飯才會飽！', 'happy'),
         L('maskutchi', '在、在黑暗裡等待救援的英雄……一點都不帥……謝謝你們來！', 'sad'),
         L('kuchipatchi', '……那個影子的我，下次分他一半吧。', 'happy'),
       ]),
     ] }] },
-    { id: 'dark_meme_npc', name: '黑暗美美吉', look: 'memetchi', dark: true, x: 3900, z: 140, showIf: '!ch7_meme_done', talk: [{ script: [
+    { id: 'dark_meme_npc', name: '黑暗美眉吉', look: 'memetchi', dark: true, x: 3900, z: 140, showIf: '!ch7_meme_done', talk: [{ script: [
       L('dark_meme_npc', '呵呵……甜點？溫柔？那些東西最後都會壞掉的。你的朋友也一樣。', 'angry'),
-      L('hero', '就算會壞掉，做的時候的心情是真的！把美美吉和咪咪吉還來！', 'determined'),
+      L('hero', '就算會壞掉，做的時候的心情是真的！把美眉吉和咪咪吉還來！', 'determined'),
       { do: 'battle', encounter: ['dark_meme', 'shadow_blob'], flag: 'ch7_meme_done' },
       ...FREE('memetchi', 'mimitchi', 3900, 'ch7_free2', [
-        L('memetchi', '……我聽見了，麻美吉的聲音。謝謝你一直沒有放棄。', 'happy'),
+        L('memetchi', '……我聽見了，麻每吉的聲音。謝謝你一直沒有放棄。', 'happy'),
         L('mimitchi', '黑暗裡好安靜……可是你們的腳步聲，好溫暖。', 'happy'),
         L('memetchi', '影子的我，其實也只是害怕吧。', 'sad'),
       ]),
@@ -107,6 +107,7 @@ export const ch7: ChapterDef = {
     { id: 'e7e', enemy: 'shadow_blob', party: ['shadow_blob', 'void_eye', 'shadow_blob'], x: 5600, z: 100, ai: 'chaser' },
   ],
   chests: [
+    { id: 'c7_px1', x: 3000, z: 225, items: [{ id: 'elixir', qty: 1 }], world: 'pixel' },
     { id: 'c7_1', x: 600, z: 50, items: [{ id: 'sticker_19', qty: 1 }] },
     { id: 'c7_2a', x: 2300, z: 40, items: [{ id: 'elixir', qty: 1 }] },
     { id: 'c7_3', x: 3250, z: 210, items: [{ id: 'cake', qty: 2 }] },
@@ -115,6 +116,7 @@ export const ch7: ChapterDef = {
     { id: 'c7_2', x: 5450, z: 200, items: [{ id: 'life_mushroom', qty: 1 }, { id: 'feast', qty: 1 }] },
   ],
   objects: [
+    { id: 'sign_egg7', type: 'sign', x: 4180, z: 215, text: '前一塊晶石只在紙片世界，後一塊只在像素世界。跳起來，在半空中切換世界！' },
     { id: 'sign71', type: 'sign', x: 380, z: 170, text: '這、裡、沒、有、出、口。（下面有人用很小的字補充：「騙人的，一直往右走」）' },
     { id: 'save71', type: 'savepoint', x: 1050, z: 60 },
     { id: 'gate71', type: 'gate', x: 2100, z: 0, cond: 'ch7_kuchi_done', w: 1 },
@@ -135,8 +137,8 @@ export const ch7: ChapterDef = {
   platforms: [
     { id: 'dk1', x: 2920, z: 120, w: 110, d: 60, dz: 90, period: 2.8, look: 'crystal' },
     { id: 'dk2', x: 3040, z: 120, w: 110, d: 60, dz: -90, period: 2.8, look: 'crystal' },
-    { id: 'dk3', x: 4320, z: 130, w: 110, d: 60, dx: 50, dz: 60, period: 3.0, look: 'crystal' },
-    { id: 'dk4', x: 4470, z: 110, w: 110, d: 60, dz: -80, period: 2.4, look: 'crystal' },
+    { id: 'dk3', x: 4320, z: 130, w: 110, d: 60, dx: 50, dz: 60, period: 3.0, look: 'crystal', world: 'paper' },
+    { id: 'dk4', x: 4470, z: 110, w: 110, d: 60, dz: -80, period: 2.4, look: 'pixel', world: 'pixel' },
     // a hidden crystal path in the dark: Oyajitchi's star lantern shows it (a shortcut to a chest)
     { id: 'lt1', x: 3600, z: 30, w: 120, d: 60, look: 'star', secret: 'light' },
   ],
@@ -147,7 +149,7 @@ export const ch7: ChapterDef = {
     { id: 't7_mirror', x: 4600, w: 50, if: '!ch7_mirror', once: true, script: [
       CINE(), PAN(4900, 900),
       L('hero', '那邊……有另一個我！', 'surprised'),
-      PL('oyajitchi', '是影子麻美吉。你往右，它就往左——它會反過來跟著你走。', 'normal'),
+      PL('oyajitchi', '是影子麻每吉。你往右，它就往左——它會反過來跟著你走。', 'normal'),
       PL('oyajitchi', '走到盡頭的時候，影子會被擋住……利用這一點，讓「光」和「影」的踏板同時亮起來吧。', 'normal'),
       QS('q7_crystals'), FOLLOW(600), CINE(false),
     ] },
@@ -198,10 +200,10 @@ export const ch7: ChapterDef = {
     post: [
       IF('ch7_choice=light', [
         L('dark_mametchi', '……你贏了。帶著我一起走吧，害怕的心情也是你的一部分。', 'happy'),
-        GIVE('b_light'), N('黑暗麻美吉化成溫暖的光，變成了「心之光徽章」。'),
+        GIVE('b_light'), N('黑暗麻每吉化成溫暖的光，變成了「心之光徽章」。'),
       ], [
         L('dark_mametchi', '……哼。那就把我的力量拿去。總有一天你會需要承認我。', 'normal'),
-        GIVE('b_shadow'), N('黑暗麻美吉化成黑色的光，變成了「暗影徽章」。'),
+        GIVE('b_shadow'), N('黑暗麻每吉化成黑色的光，變成了「暗影徽章」。'),
       ]),
       SFX('shard'), N('影子消失的地方，留下了一塊深藍色的碎片。'),
     ],

@@ -14,7 +14,7 @@ const GATE_HINT = IF('found_v1&found_v2', [], [
 /** Kuchipatchi joins — by talking to him or simply walking past him. */
 const KUCHI_JOIN: Script = [
   CINE(),
-  L('kuchipatchi', '咕嚕嚕……麻美吉～我的肚子好餓喔……', 'sad'),
+  L('kuchipatchi', '咕嚕嚕……麻每吉～我的肚子好餓喔……', 'sad'),
   L('kuchipatchi', '天空變灰之後，麵包店的麵包都變得沒有味道了……', 'worried'),
   IF('item:apple', [
     L('hero', '來，這顆蘋果給你吃！', 'happy'), TAKE('apple'), SFX('item'),
@@ -22,20 +22,20 @@ const KUCHI_JOIN: Script = [
   ], [L('hero', '我身上沒有吃的……不過一起去找找看吧！', 'worried')]),
   L('kuchipatchi', '你要去廣場對吧？我也要去！我的大嘴巴可是很厲害的！', 'determined'),
   JOIN('kuchipatchi'), SFX('join'),
-  N('庫奇帕奇成為了夥伴！每個夥伴都有自己的「能力」。按 C（手機：右下角的「能力」鈕）就能使用。'),
+  N('大嘴吉成為了夥伴！每個夥伴都有自己的「能力」。按 C（手機：右下角的「能力」鈕）就能使用。'),
   N('有好幾個夥伴之後，按 R 或點左上角的夥伴頭像，就可以換人。'),
 ];
 
 export const ch1: ChapterDef = {
   id: 'ch1', num: 1, title: '第一章：消失的星光', location: '拓麻歌子村莊',
-  summary: '星之心碎裂的那一晚，村莊失去了顏色。麻美吉的星之感應器突然響了起來…',
+  summary: '星之心碎裂的那一晚，村莊失去了顏色。麻每吉的星之感應器突然響了起來…',
   music: 'village', weather: 'leaves', width: 5600, start: { x: 200, z: 130 }, grey: -0.7,
   theme: {
     id: 'village', skyTop: 0x5a4a8a, skyBottom: 0xf0a888, far: 0x8a7ab0, farAccent: 0xffffff, mid: 0x6a9a6a, midAccent: 0x4a8a4a,
     ground: 0x8acb6a, groundAccent: 0x5a9a4a, groundEdge: 0x6ab84a, pitColor: 0x4a90c8, light: 0xffe0b0, ambient: 0xfff0e0,
     sun: 'moon', farShape: 'mountains', midShape: 'trees', groundPattern: 'grass',
   },
-  mapNodes: [{ name: '麻美吉的家', x: 200 }, { name: '村莊廣場', x: 1000 }, { name: '小池塘', x: 2300 }, { name: '東邊倉庫', x: 3900 }, { name: '守護者廣場', x: 4700 }],
+  mapNodes: [{ name: '麻每吉的家', x: 200 }, { name: '村莊廣場', x: 1000 }, { name: '小池塘', x: 2300 }, { name: '東邊倉庫', x: 3900 }, { name: '守護者廣場', x: 4700 }],
   intro: [
     MUSIC('village'),
     IF('!opening_seen', [
@@ -66,7 +66,7 @@ export const ch1: ChapterDef = {
     { t: 'bush', x: 2500, z: 240, layer: 'front' }, { t: 'bush', x: 4200, z: 240, layer: 'front' },
   ],
   npcs: [
-    { id: 'kuchipatchi', name: '庫奇帕奇', look: 'kuchipatchi', x: 700, z: 150, showIf: '!joined:kuchipatchi', talk: [{ script: KUCHI_JOIN }] },
+    { id: 'kuchipatchi', name: '大嘴吉', look: 'kuchipatchi', x: 700, z: 150, showIf: '!joined:kuchipatchi', talk: [{ script: KUCHI_JOIN }] },
     { id: 'oyajitchi', name: '神秘長者', look: 'oyajitchi', x: 1000, z: 110, talk: [
       { if: '!ch1_met_elder', script: [
         CINE(),
@@ -99,7 +99,7 @@ export const ch1: ChapterDef = {
     ] },
     { id: 'kid', name: '哭泣的小芽', look: LOOKS.kid, x: 1250, z: 200, talk: [
       { if: '!quest:s1_doll&!done:s1_doll', script: [L('kid', '嗚嗚……我的小布偶不見了……好像掉到池塘那邊了……', 'sad'), L('hero', '別哭別哭，我幫你找！', 'determined'), QS('s1_doll')] },
-      { if: 'quest:s1_doll&item:lost_doll', script: [L('hero', '找到了！是這個嗎？', 'happy'), TAKE('lost_doll'), L('kid', '是我的布偶！謝謝你，麻美吉哥哥！', 'happy'), JUMP('kid'), FLAG('s1_doll_returned')] },
+      { if: 'quest:s1_doll&item:lost_doll', script: [L('hero', '找到了！是這個嗎？', 'happy'), TAKE('lost_doll'), L('kid', '是我的布偶！謝謝你，麻每吉哥哥！', 'happy'), JUMP('kid'), FLAG('s1_doll_returned')] },
       { if: 'quest:s1_doll', script: [L('kid', '布偶在池塘那邊……拜託你了……', 'sad')] },
       { script: [L('kid', '我和布偶以後都會乖乖的！', 'happy')] },
     ] },
@@ -108,7 +108,7 @@ export const ch1: ChapterDef = {
     { id: 'e1a', enemy: 'grumble_blob', party: ['grumble_blob'], x: 1400, z: 160, ai: 'sleeper', small: true },
     { id: 'e1b', enemy: 'grumble_blob', party: ['grumble_blob', 'grumble_blob'], x: 2000, z: 90, small: true },
     { id: 'e1c', enemy: 'sour_shroom', party: ['sour_shroom', 'grumble_blob'], x: 3000, z: 140, ai: 'chaser' },
-    { id: 'e1d', enemy: 'buzz_bug', party: ['buzz_bug', 'sour_shroom'], x: 3550, z: 80, ai: 'ambush' },
+    { id: 'e1d', enemy: 'buzz_bug', party: ['buzz_bug', 'sour_shroom'], x: 3700, z: 80, ai: 'ambush' },
     { id: 'e1e', enemy: 'grumble_blob', party: ['grumble_blob', 'buzz_bug', 'grumble_blob'], x: 4150, z: 170, ai: 'chaser' },
   ],
   chests: [
@@ -119,17 +119,22 @@ export const ch1: ChapterDef = {
     { id: 'c1_bell', x: 3950, z: 110, items: [{ id: 'village_bell', qty: 1 }], showIf: 'found_v1&found_v2&found_v3' },
     { id: 'c1_hidden2', x: 3700, z: 200, items: [{ id: 'sticker_3', qty: 1 }, { id: 'b_power', qty: 1 }], hidden: true },
     { id: 'c1_3', x: 4400, z: 200, items: [{ id: 'juice', qty: 2 }, { id: 'power_cookie', qty: 1 }] },
+    // only visible through the egg device
+    { id: 'c1_px1', x: 2900, z: 230, items: [{ id: 'star_candy', qty: 1 }, { id: 'apple', qty: 2 }], world: 'pixel' },
+    { id: 'c1_px2', x: 5200, z: 60, items: [{ id: 'power_cookie', qty: 2 }], world: 'pixel' },
   ],
   objects: [
     { id: 'sign1', type: 'sign', x: 380, z: 150, text: '【操作說明】WASD／方向鍵移動，Space 跳躍，J 或 X 揮鎚子，Enter 或 E 調查／對話，C 使用夥伴能力，R 換夥伴，ESC 打開選單。' },
     { id: 'bread', type: 'ability', x: 880, z: 120, need: 'kuchipatchi', look: 'food_wall', flag: 'ch1_bread', script: [
       L('kuchipatchi', '嗯～雖然是灰色的，還是有剛出爐的味道！', 'happy'), JUMP('kuchipatchi'),
-      L('hero', '路通了！庫奇帕奇，你太厲害了！', 'happy'),
+      L('hero', '路通了！大嘴吉，你太厲害了！', 'happy'),
     ] },
     { id: 'sign2', type: 'sign', x: 1550, z: 160, text: '裂開的牆壁可以用鎚子敲碎！走過去按攻擊鍵試試看。' },
     { id: 'wall1', type: 'breakable', x: 1700, z: 0, w: 1, flag: 'ch1_wall' },
     { id: 'sign3', type: 'sign', x: 2150, z: 200, text: '池塘裡有會動的荷葉。站上去就能過河！掉進水裡會被沖回岸邊喔。' },
     { id: 'save1', type: 'savepoint', x: 1300, z: 90 },
+    { id: 'sign_egg', type: 'sign', x: 3360, z: 210, text: '小河上沒有橋？按 V（手機：「蛋機」鈕）用蛋機看看！像素世界的電量用完會被彈回來喔。' },
+    { id: 'pxwall1', type: 'egg_wall', x: 3640, z: 0, w: 1, world: 'pixel' },
     { id: 'gate1', type: 'gate', x: 3800, z: 0, cond: 'found_v1&found_v2&found_v3', w: 1 },
     { id: 'heal1', type: 'heal', x: 4300, z: 120 },
     { id: 'save2', type: 'savepoint', x: 4420, z: 70 },
@@ -137,11 +142,14 @@ export const ch1: ChapterDef = {
   ],
   zones: [
     { type: 'pit', x: 2220, w: 360, z0: 0, z1: 240, look: 'water' },
+    { type: 'pit', x: 3400, w: 170, z0: 0, z1: 240, look: 'water' },
   ],
   platforms: [
     { id: 'lily1', x: 2290, z: 120, w: 90, d: 50, dz: 70, period: 3.2, look: 'lily' },
     { id: 'lily2', x: 2400, z: 110, w: 90, d: 50, dx: 30, dz: -60, period: 2.6, look: 'lily' },
     { id: 'lily3', x: 2510, z: 120, w: 90, d: 50, dz: 80, period: 3.6, look: 'lily' },
+    // the bridge only exists inside the egg device's pixel world
+    { id: 'pxbridge', x: 3485, z: 130, w: 230, d: 110, look: 'pixel', world: 'pixel' },
   ],
   triggers: [
     { id: 't1_kuchi', x: 560, w: 80, if: '!joined:kuchipatchi', once: true, block: true, script: [EMOTE('kuchipatchi', '!'), ...KUCHI_JOIN] },
@@ -164,6 +172,21 @@ export const ch1: ChapterDef = {
       FOLLOW(700),
       L('hero', '那兩個灰灰的傢伙是誰？「把碎片塞進石像裡」……？', 'worried'),
       PL('kuchipatchi', '他們跑去守護者廣場的方向了……', 'worried'),
+      CINE(false),
+    ] },
+    { id: 't1_egg', x: 3300, w: 60, if: '!has_egg', once: true, block: true, script: [
+      CINE(),
+      PAN(3480, 800),
+      L('hero', '這條小河……橋被沖走了！', 'worried'),
+      FOLLOW(600),
+      FX('sparkle', 'hero'), SFX('egg_on'),
+      L('hero', '咦？星之感應器在發燙……變成蛋的形狀了！', 'surprised'),
+      L('hero', '小小的螢幕裡是黑白的像素畫面……裡面的小河上，有一座橋！', 'surprised'),
+      FLAG('has_egg'), SFX('item'),
+      N('得到了「蛋機」！按 V（手機：右下角的「蛋機」鈕）就能在紙片世界和像素世界之間切換。'),
+      N('像素世界會出現紙片世界沒有的路，機器會停下來，怪物也會變成無害的小點點。'),
+      N('不過蛋機的電量有限（畫面上方的蛋）。電用完就會被彈回紙片世界——要是正站在像素的橋上，就會掉下去！'),
+      PL('kuchipatchi', '兩個世界都要用到才能前進的樣子……好好玩！', 'happy'),
       CINE(false),
     ] },
     { id: 't1_bellquest', x: 0, w: 5600, if: 'done:q1_villagers&!quest:q1_bell&!done:q1_bell', once: true, script: [

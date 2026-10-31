@@ -384,7 +384,7 @@ export class FieldPlay {
 
   private updateOxygen(dt: number, can: boolean): void {
     const p = this.player;
-    const deep = this.w.chapter.zones.find((z: ZoneDef) => z.type === 'deep' && p.x >= z.x && p.x <= z.x + z.w) as ZoneDef | undefined;
+    const deep = this.w.chapter.zones.find((z: ZoneDef) => z.type === 'deep' && this.w.zoneOn(z) && p.x >= z.x && p.x <= z.x + z.w) as ZoneDef | undefined;
     const vent = this.w.objects.find((o: any) => o.def.type === 'vent' && Math.abs(o.def.x - p.x) < 70 && Math.abs(o.def.z - p.z) < 60);
     if (vent && this.oxygen < 1) { this.oxygen = Math.min(1, this.oxygen + dt * 1.2); if (Math.random() < 0.2) audio.sfx('bubble', 1.3); }
     else if (deep && can && this.bubbleT <= 0) this.oxygen = Math.max(0, this.oxygen - dt / 13);
@@ -424,7 +424,7 @@ export class FieldPlay {
     const sc = this.scene;
     this.mirrorSolved = G.cond(m.flag);
     this.shadow = new Actor(sc, { charId: 'mametchi', dark: true }, this.mirrorSolved ? m.shadowStart : m.shadowStart, m.z, 0.86);
-    this.shadow.setLabel('影子麻美吉', '#d8a0ff');
+    this.shadow.setLabel('影子麻每吉', '#d8a0ff');
     this.shadow.face(-1, 0);
     const wallKey = FieldPlay.tex(sc, 'fp:shadowwall', 60, 160, (g) => {
       g.fillStyle = 'rgba(160,60,255,0.55)'; g.strokeStyle = '#2a0a4a'; g.lineWidth = 4;

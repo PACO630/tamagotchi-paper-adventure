@@ -193,6 +193,9 @@ class AudioEngine {
       case 'bubble': T(500, 0, 0.08, 'sine', 0.22, { slide: 1300 }); T(700, 0.07, 0.07, 'sine', 0.15, { slide: 1600 }); break;
       case 'alarm': T(1100, 0, 0.12, 'square', 0.22); T(800, 0.14, 0.12, 'square', 0.22); T(1100, 0.28, 0.12, 'square', 0.22); break;
       case 'whoosh': this.noiseHit(out, t, 0.35, 0.25, 900, 'bandpass'); break;
+      // the egg device: the classic Tamagotchi double beep
+      case 'egg_on': T(2093, 0, 0.06, 'square', 0.16); T(2093, 0.1, 0.06, 'square', 0.16); T(2637, 0.2, 0.12, 'square', 0.16); break;
+      case 'egg_off': T(2637, 0, 0.06, 'square', 0.16); T(1568, 0.09, 0.14, 'square', 0.16); break;
     }
   }
 

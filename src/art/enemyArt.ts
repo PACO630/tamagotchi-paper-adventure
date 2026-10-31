@@ -6,26 +6,33 @@ import { hashString } from '../core/util';
 
 export type EnemyFrame = 'idle0' | 'idle1' | 'attack' | 'hurt';
 
+/** true while drawing a "dark" (shadow-corrupted) enemy: red eyes, no blush */
+let darkMode = false;
+
+/** Tamagotchi-ish doodle eyes: lopsided black dots with a pixel shine, angry brows, > < when hurt, spray-can blush. */
 function eyes(d: Doodle, x: number, y: number, gap: number, mood: 'angry' | 'hurt' | 'normal', col = '#000000', size = 4) {
-  if (mood === 'hurt') {
-    d.line([[x - gap - 4, y - 3], [x - gap + 3, y], [x - gap - 4, y + 3]], 2);
-    d.line([[x + gap + 4, y - 3], [x + gap - 3, y], [x + gap + 4, y + 3]], 2);
-    return;
-  }
-  d.blob(x - gap, y, size + 2, size + 3, '#ffffff', 2);
-  d.blob(x + gap, y + 1, size + 1, size + 2, '#ffffff', 2);
-  d.dot(x - gap + 1, y + 1, size * 0.55, col);
-  d.dot(x + gap - 1, y + 1, size * 0.5, col);
-  if (mood === 'angry') {
-    d.line([[x - gap - 7, y - 9], [x - gap + 5, y - 5]], 3);
-    d.line([[x + gap - 5, y - 5], [x + gap + 7, y - 10]], 3);
+  for (const s of [-1, 1]) {
+    const ex = x + s * gap;
+    if (mood === 'hurt') {
+      d.line([[ex + s * 4, y - 4], [ex - s * 3, y], [ex + s * 4, y + 4]], 2);
+      continue;
+    }
+    const k = s > 0 ? 0.85 : 1; // never the same size
+    d.dot(ex, y + (s > 0 ? 1 : 0), size * k, darkMode ? '#ff0000' : col);
+    if (!darkMode) {
+      d.ctx.fillStyle = '#ffffff';
+      d.ctx.fillRect(Math.round(ex - size * 0.45), Math.round(y - size * 0.5), 2, 2);
+      d.spray(ex + s * (size + 5), y + size + 4, 4.5, '#ff80c0', 24);
+    }
+    // no eyebrows: an angry red vein mark instead
+    if (mood === 'angry' && s > 0) for (const [vx, vy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) d.line([[ex + 12 + vx * 2, y - size - 12 + vy * 5], [ex + 12 + vx * 5, y - size - 12 + vy * 2]], 2.5, '#ff0000');
   }
 }
 
 function mouth(d: Doodle, x: number, y: number, mood: 'angry' | 'hurt' | 'normal') {
   if (mood === 'hurt') d.blob(x, y, 4, 5, '#800000', 2);
-  else if (mood === 'angry') d.line([[x - 8, y], [x - 4, y - 3], [x, y], [x + 4, y - 3], [x + 8, y]], 2);
-  else d.line([[x - 6, y + 2], [x, y - 1], [x + 6, y + 2]], 2);
+  else if (mood === 'angry') d.line([[x - 7, y + 3], [x - 3, y - 1], [x + 3, y - 1], [x + 7, y + 3]], 2);
+  else d.line([[x - 5, y - 1], [x - 2, y + 3], [x + 2, y + 3], [x + 5, y - 1]], 2);
 }
 
 function spikes(d: Doodle, cx: number, cy: number, r: number, n: number, col: string, from = 0, to = Math.PI * 2) {
@@ -44,6 +51,7 @@ export function drawEnemy(d: Doodle, art: EnemyArt, frame: EnemyFrame, spiky: bo
   const lunge = frame === 'attack' ? -8 : 0;
   const c = art.color, a = art.accent;
   const ctx = d.ctx;
+  darkMode = !!art.dark;
   ctx.save();
   if (frame === 'hurt') { ctx.translate(64, 120); ctx.scale(1.12, 0.88); ctx.translate(-64, -120); }
 

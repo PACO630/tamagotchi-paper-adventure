@@ -13,6 +13,7 @@ export type UiIconName =
   | 'crown' | 'speaker' | 'chat' | 'gamepad' | 'globe' | 'check' | 'back' | 'close' | 'lightning' | 'counter'
   | 'up' | 'down' | 'left' | 'right' | 'more' | 'shard' | 'heart' | 'skull' | 'fire' | 'zzz' | 'spiral'
   | 'chain' | 'atkUp' | 'atkDown' | 'defUp' | 'defDown' | 'regen' | 'diamond' | 'blind' | 'wing' | 'spike'
+  | 'drop' | 'crumple' | 'duo'
   | 'boss' | 'note' | 'camera' | 'share' | 'addSquare' | 'dots' | 'rotate';
 
 const S = 48;
@@ -107,6 +108,9 @@ const DRAW: Record<UiIconName, (d: Doodle) => void> = {
   regen: (d) => { DRAW.heart(d); d.shape([[34, 4], [40, 4], [40, 10], [46, 10], [46, 16], [40, 16], [40, 22], [34, 22], [34, 16], [28, 16], [28, 10], [34, 10]], '#00e060', 1); },
   diamond: (d) => d.shape([[24, 4], [42, 24], [24, 44], [6, 24]], '#80c0ff', 2),
   blind: (d) => { d.shape([[4, 24], [24, 12], [44, 24], [24, 36]], '#ffffff', 2); d.blob(24, 24, 6, 6, '#000000', 0); d.line([[8, 40], [40, 8]], 4, '#ff0000'); },
+  drop: (d) => { d.shape([[24, 4], [36, 26], [34, 38], [24, 44], [14, 38], [12, 26]], '#40a0ff', 2); d.blob(19, 28, 3, 5, '#ffffff', 0); },
+  crumple: (d) => { d.shape([[8, 10], [20, 6], [26, 14], [40, 8], [42, 22], [36, 30], [42, 40], [26, 42], [20, 36], [6, 40], [10, 26]], '#fffdf6', 2); d.line([[14, 16], [24, 26], [34, 18]], 2, '#a0a0a0'); d.line([[16, 34], [26, 26], [36, 34]], 2, '#a0a0a0'); },
+  duo: (d) => { d.blob(16, 26, 11, 11, '#ffff80', 2); d.blob(32, 26, 11, 11, '#80ff00', 2); d.shape([[24, 4], [28, 12], [36, 12], [30, 18], [32, 26], [24, 21], [16, 26], [18, 18], [12, 12], [20, 12]], '#ff4060', 2); },
   wing: (d) => d.shape([[6, 30], [20, 10], [42, 6], [34, 18], [42, 22], [30, 30], [36, 38], [16, 38]], '#ffffff', 2),
   spike: (d) => { for (const x of [10, 24, 38]) d.shape([[x - 7, 40], [x, 8], [x + 7, 40]], '#c0c0c0', 2); },
   boss: (d) => { d.blob(24, 26, 17, 16, '#ff4040', 2); d.shape([[10, 14], [8, 2], [18, 12]], '#ffffff', 2); d.shape([[38, 14], [40, 2], [30, 12]], '#ffffff', 2); d.line([[14, 22], [21, 26]], 3); d.line([[34, 22], [27, 26]], 3); },

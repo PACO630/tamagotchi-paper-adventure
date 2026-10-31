@@ -25,11 +25,13 @@ export interface CharDef {
 
 export type StatusType =
   | 'poison' | 'burn' | 'sleep' | 'dizzy' | 'stuck'
-  | 'atkUp' | 'atkDown' | 'defUp' | 'defDown' | 'regen' | 'shield' | 'blind';
+  | 'atkUp' | 'atkDown' | 'defUp' | 'defDown' | 'regen' | 'shield' | 'blind'
+  /* paper elements: soaked paper goes soft (physical hits hurt more, can't burn); crumpled paper loses its defence */
+  | 'wet' | 'crumpled';
 
 export interface StatusSpec { type: StatusType; turns: number; chance: number; amount?: number }
 
-export type ActionCommand = 'timing' | 'mash' | 'sequence' | 'jump' | 'none';
+export type ActionCommand = 'timing' | 'mash' | 'sequence' | 'jump' | 'hold' | 'swipe' | 'rhythm' | 'aim' | 'none';
 export type SkillTarget = 'enemy' | 'allEnemies' | 'ally' | 'allAllies' | 'self';
 
 export interface SkillDef {
@@ -210,7 +212,14 @@ export interface BookPage {
 /** A condition string: "flag", "!flag", "a&b", "quest:id", "done:id", "item:id" */
 export type Cond = string;
 
+/** Tamagotchi species drawn by the character painter for villagers, villains and friends. */
+export type Species =
+  | 'furawatchi' | 'youngmametchi' | 'youngmimitchi' | 'ringotchi' | 'nikatchi' | 'ichigotchi' | 'drotchi'
+  | 'tarakotchi' | 'hashizotchi' | 'hinotamatchi' | 'debatchi' | 'robotchi' | 'wooltchi'
+  | 'eternatchi' | 'young_eter' | 'dahui' | 'xiaohui' | 'lumi';
+
 export interface NpcLook {
+  species?: Species;
   color: string;
   accent: string;
   ears?: 'none' | 'round' | 'pointy' | 'bunny' | 'antenna' | 'leaf' | 'horn' | 'cat';
@@ -249,6 +258,8 @@ export interface ZoneDef {
   duty?: number;
   look?: string;
   dmg?: number;
+  /** only active in one of the egg device's two worlds */
+  world?: 'paper' | 'pixel';
 }
 
 export interface PlatformDef {
@@ -257,6 +268,8 @@ export interface PlatformDef {
   showIf?: Cond;
   /** invisible (and not solid) until revealed by a partner ability: 'listen' or 'light' */
   secret?: 'listen' | 'light';
+  /** only exists in one of the egg device's two worlds */
+  world?: 'paper' | 'pixel';
 }
 
 export interface ChestDef {
@@ -267,9 +280,11 @@ export interface ChestDef {
   coins?: number;
   hidden?: boolean;
   showIf?: Cond;
+  /** only visible (and openable) in one of the egg device's two worlds */
+  world?: 'paper' | 'pixel';
 }
 
-export type ObjType = 'breakable' | 'switch' | 'gate' | 'sign' | 'savepoint' | 'shard' | 'door' | 'spring' | 'heal' | 'ability' | 'vent' | 'plate';
+export type ObjType = 'breakable' | 'switch' | 'gate' | 'sign' | 'savepoint' | 'shard' | 'door' | 'spring' | 'heal' | 'ability' | 'vent' | 'plate' | 'egg_wall';
 export interface ObjDef {
   id: string;
   type: ObjType;
@@ -289,6 +304,8 @@ export interface ObjDef {
   need?: CharId;
   /** plates: pressed by the hero or by the mirror shadow */
   by?: 'hero' | 'shadow';
+  /** only exists in one of the egg device's two worlds */
+  world?: 'paper' | 'pixel';
 }
 
 /**
@@ -365,6 +382,8 @@ export interface ChapterDef {
   mapNodes: { name: string; x: number }[];
   /** world saturation before the boss is beaten (-1 grey … 0 full colour) */
   grey?: number;
+  /** egg device battery drain per second in this chapter (default 0.085 ≈ 12 s) */
+  eggDrain?: number;
   chases?: ChaseDef[];
   mirror?: MirrorDef;
   rooms?: RoomDef[];

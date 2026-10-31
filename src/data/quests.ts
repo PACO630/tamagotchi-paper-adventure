@@ -13,7 +13,7 @@ const list: QuestDef[] = [
   { id: 'q2_river', chapter: 2, type: 'main', title: '越過巧克力河', desc: '利用漂浮的餅乾平台越過巧克力河。', objective: { kind: 'flag', flag: 'ch2_crossed' }, reward: { exp: 40 } },
   { id: 'q2_maze', chapter: 2, type: 'main', title: '糖果迷宮', desc: '按照正確順序敲響迷宮裡的三個糖果開關。', objective: { kind: 'flag', flag: 'ch2_maze_open' }, reward: { exp: 60 } },
   { id: 'q2_boss', chapter: 2, type: 'main', title: '暴走的樹王', desc: '森林中心的糖果樹王失控了。', objective: { kind: 'flag', flag: 'boss2' } },
-  { id: 's2_flowers', chapter: 2, type: 'side', title: '糖霜花束', desc: '美美吉想做一個花束，收集 3 朵糖霜花。', objective: { kind: 'collect', item: 'candy_flower', count: 3 }, takeItems: true, reward: { exp: 60, items: [{ id: 'cake', qty: 2 }] } },
+  { id: 's2_flowers', chapter: 2, type: 'side', title: '糖霜花束', desc: '美眉吉想做一個花束，收集 3 朵糖霜花。', objective: { kind: 'collect', item: 'candy_flower', count: 3 }, takeItems: true, reward: { exp: 60, items: [{ id: 'cake', qty: 2 }] } },
   // Chapter 3
   { id: 'q3_feather', chapter: 3, type: 'main', title: '風之羽毛', desc: '風車小屋的老奶奶有能乘上氣流的羽毛。', objective: { kind: 'collect', item: 'wind_feather', count: 1 }, reward: { exp: 80 } },
   { id: 'q3_windmills', chapter: 3, type: 'main', title: '重啟風車', desc: '啟動兩座停止的風車，讓漂浮島重新連接。', objective: { kind: 'flags', flags: ['ch3_mill1', 'ch3_mill2'] }, reward: { exp: 120 } },
@@ -36,8 +36,8 @@ const list: QuestDef[] = [
   { id: 's6_candles', chapter: 6, type: 'side', title: '幽靈的請求', desc: '友善的幽靈想要 2 根記憶蠟燭，好想起自己的名字。', objective: { kind: 'collect', item: 'candle', count: 2 }, takeItems: true, reward: { exp: 400, items: [{ id: 'b_heart', qty: 1 }] } },
   // Chapter 7
   { id: 'q7_mirror_friends', chapter: 7, type: 'main', title: '黑暗中的夥伴', desc: '打倒黑暗異世界中的夥伴影子。', objective: { kind: 'defeat', enemy: 'dark_kuchi', count: 1 }, reward: { exp: 500 } },
-  { id: 'q7_crystals', chapter: 7, type: 'main', title: '光與影的機關', desc: '影子麻美吉會反方向模仿你的動作。讓「光」和「影」的踏板同時亮起來！（紫色柵欄只擋得住影子）', objective: { kind: 'flag', flag: 'ch7_mirror' }, reward: { exp: 700 } },
-  { id: 'q7_boss', chapter: 7, type: 'main', title: '另一個自己', desc: '道路盡頭有一個和麻美吉一模一樣的影子。', objective: { kind: 'flag', flag: 'boss7' } },
+  { id: 'q7_crystals', chapter: 7, type: 'main', title: '光與影的機關', desc: '影子麻每吉會反方向模仿你的動作。讓「光」和「影」的踏板同時亮起來！（紫色柵欄只擋得住影子）', objective: { kind: 'flag', flag: 'ch7_mirror' }, reward: { exp: 700 } },
+  { id: 'q7_boss', chapter: 7, type: 'main', title: '另一個自己', desc: '道路盡頭有一個和麻每吉一模一樣的影子。', objective: { kind: 'flag', flag: 'boss7' } },
   { id: 's7_lost', chapter: 7, type: 'side', title: '小光的心願', desc: '陪著小光走到黑暗的盡頭。她說，她在找一個很重要的人。', objective: { kind: 'flag', flag: 's7_light_home' }, reward: { exp: 600, items: [{ id: 'elixir', qty: 1 }, { id: 'star_candy', qty: 3 }] } },
   // Chapter 8
   { id: 'q8_seals', chapter: 8, type: 'main', title: '三道星之封印', desc: '解開神殿的三道星之封印。', objective: { kind: 'flags', flags: ['ch8_seal1', 'ch8_seal2', 'ch8_seal3'] }, reward: { exp: 800 } },

@@ -61,7 +61,7 @@ export class OpeningScene extends Phaser.Scene {
   private shadowTexture(): string {
     const key = 'opening:shadow';
     if (this.textures.exists(key)) return key;
-    const f = renderFrame({ npc: { color: '#ffffc0', accent: '#4000c0', ears: 'horn', hat: 'crown', size: 1.1 } }, basePose({ facing: 'front', expr: 'angry' }), 'opening-shadow');
+    const f = renderFrame({ npc: { species: 'eternatchi', color: '#fffbe6', accent: '#5b35b5', size: 1.1 } }, basePose({ facing: 'front', expr: 'angry' }), 'opening-shadow');
     this.textures.addCanvas(key, f);
     return key;
   }
@@ -227,7 +227,7 @@ export class OpeningScene extends Phaser.Scene {
     this.tweens.add({ targets: sensor, alpha: 0.4, yoyo: true, repeat: -1, duration: 260, delay: 600 });
     audio.sfx('magic');
     this.time.delayedCall(500, () => { this.emote(mame, '!'); this.hop(mame, 100); audio.sfx('jump'); });
-    await this.say('就在這時——麻美吉發明的「星之感應器」嗶嗶嗶地響了起來！', 3400);
+    await this.say('就在這時——麻每吉發明的「星之感應器」嗶嗶嗶地響了起來！', 3400);
     if (this.skipped) return;
 
     // 6. title card

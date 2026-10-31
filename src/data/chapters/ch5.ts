@@ -20,7 +20,7 @@ const GOZA_JOIN: Script = [
 export const ch5: ChapterDef = {
   id: 'ch5', num: 5, title: '第五章：神秘海洋', location: '夢幻海洋',
   summary: '戴上泡泡頭盔潛入海底。深海的氧氣不多，沉船的黑暗裡，好像有什麼巨大的東西在游……',
-  music: 'ocean', weather: 'bubbles', width: 6400, start: { x: 180, z: 130 }, grey: -0.6,
+  music: 'ocean', weather: 'bubbles', width: 6400, start: { x: 180, z: 130 }, grey: -0.6, eggDrain: 0.075,
   theme: {
     id: 'ocean', skyTop: 0x0a3a7a, skyBottom: 0x3ab0c8, far: 0x2a6a9a, farAccent: 0x4ab0a0, mid: 0x3a8a9a, midAccent: 0x3aa86a,
     ground: 0xe8d8a0, groundAccent: 0xffa8c8, groundEdge: 0xf8f0d0, pitColor: 0x0a2a5a, light: 0xa0f0ff, ambient: 0xd0f0ff,
@@ -64,6 +64,7 @@ export const ch5: ChapterDef = {
     { id: 'e5e', enemy: 'reef_crab', party: ['reef_crab', 'reef_crab', 'zap_jelly'], x: 5300, z: 100, ai: 'chaser' },
   ],
   chests: [
+    { id: 'c5_px1', x: 2150, z: 225, items: [{ id: 'star_candy', qty: 1 }, { id: 'herb_tea', qty: 2 }], world: 'pixel' },
     { id: 'c5_1', x: 500, z: 50, items: [{ id: 'sticker_13', qty: 1 }] },
     { id: 'c5_h1', x: 1350, z: 200, items: [{ id: 'pearl', qty: 1 }], hidden: true },
     { id: 'c5_2', x: 2600, z: 40, items: [{ id: 'pearl', qty: 1 }, { id: 'cake', qty: 1 }] },
@@ -72,6 +73,8 @@ export const ch5: ChapterDef = {
     { id: 'c5_4', x: 5600, z: 200, items: [{ id: 'elixir', qty: 1 }, { id: 'life_mushroom', qty: 1 }] },
   ],
   objects: [
+    { id: 'sign_egg5', type: 'sign', x: 3380, z: 215, text: '珊瑚牆擋住了海底的路。像素世界裡沒有海水，也沒有珊瑚——還不用憋氣喔！' },
+    { id: 'eggw51', type: 'egg_wall', x: 3460, z: 0, w: 1, world: 'paper' },
     { id: 'sign51', type: 'sign', x: 380, z: 170, text: '深海區會消耗氧氣！在冒泡泡的海底氣孔附近可以補充氧氣。' },
     { id: 'save51', type: 'savepoint', x: 1150, z: 60 },
     { id: 'vent1', type: 'vent', x: 1800, z: 60 },
@@ -99,6 +102,10 @@ export const ch5: ChapterDef = {
   ],
   chases: [{ id: 'angler', x0: 3950, x1: 4880, look: 'angler', speed: 250, flag: 'ch5_chase_done', armed: 'ch5_chase_armed' }],
   triggers: [
+    { id: 't5_egg', x: 3330, w: 60, once: true, script: [
+      L('hero', '珊瑚牆……用蛋機看看，像素的海底是乾的！', 'surprised'),
+      PL('gozarutchi', '在下明白了。在像素世界裡，連氧氣都不會減少！', 'determined'),
+    ] },
     { id: 't5_goza', x: 840, w: 60, if: '!joined:gozarutchi', once: true, block: true, script: [EMOTE('gozarutchi', '!'), ...GOZA_JOIN] },
     { id: 't5_deep', x: 1240, w: 50, once: true, script: [
       L('hero', '前面是深海區……頭盔裡的氧氣會慢慢變少。', 'worried'),

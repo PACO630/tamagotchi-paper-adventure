@@ -39,7 +39,7 @@ import { G } from './game';
 function hasPingFang(): boolean {
   const g = document.createElement('canvas').getContext('2d');
   if (!g) return false;
-  const t = '麻美吉的冒險';
+  const t = '麻每吉的冒險';
   g.font = '20px monospace';
   const a = g.measureText(t).width;
   g.font = '20px "PingFang TC", monospace';

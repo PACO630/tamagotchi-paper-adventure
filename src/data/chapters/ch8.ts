@@ -60,6 +60,7 @@ export const ch8: ChapterDef = {
     { id: 'e8e', enemy: 'star_sentinel', party: ['star_sentinel', 'eternal_shade', 'fallen_star'], x: 5000, z: 120, ai: 'chaser' },
   ],
   chests: [
+    { id: 'c8_px1', x: 3650, z: 210, items: [{ id: 'elixir', qty: 1 }, { id: 'cake', qty: 1 }], world: 'pixel' },
     { id: 'c8_1', x: 550, z: 50, items: [{ id: 'sticker_22', qty: 1 }, { id: 'feast', qty: 1 }] },
     { id: 'c8_h1', x: 1900, z: 200, items: [{ id: 'sticker_23', qty: 1 }, { id: 'elixir', qty: 1 }], hidden: true },
     { id: 'c8_2', x: 3650, z: 40, items: [{ id: 'life_mushroom', qty: 2 }, { id: 'star_candy', qty: 2 }] },
@@ -67,6 +68,9 @@ export const ch8: ChapterDef = {
     { id: 'c8_3', x: 5450, z: 200, items: [{ id: 'elixir', qty: 2 }, { id: 'feast', qty: 1 }] },
   ],
   objects: [
+    { id: 'sign_egg8', type: 'sign', x: 1960, z: 215, text: '星之階梯：紙片的星、像素的星、再一顆紙片的星。用上你學會的所有蛋機技巧吧！' },
+    { id: 'eggw81', type: 'egg_wall', x: 4930, z: 0, w: 1, world: 'pixel' },
+    { id: 'eggw82', type: 'egg_wall', x: 5060, z: 0, w: 1, world: 'paper' },
     { id: 'save81', type: 'savepoint', x: 900, z: 60 },
     { id: 'wall81', type: 'ability', x: 1400, z: 120, need: 'violetchi', look: 'paint_wall', flag: 'ch8_wall1', script: [
       L('violetchi', '這面牆，是用「忘記的顏色」做的。只要想起來——就畫得出來！', 'determined'),
@@ -90,8 +94,8 @@ export const ch8: ChapterDef = {
   ],
   platforms: [
     { id: 'st1', x: 2060, z: 120, w: 110, d: 60, dz: 90, period: 2.6, look: 'star' },
-    { id: 'st2', x: 2200, z: 120, w: 110, d: 60, dx: 40, dz: -80, period: 3.2, look: 'star' },
-    { id: 'st3', x: 2330, z: 120, w: 110, d: 60, dz: 90, period: 2.2, look: 'star' },
+    { id: 'st2', x: 2200, z: 120, w: 110, d: 60, dx: 40, dz: -80, period: 3.2, look: 'pixel', world: 'pixel' },
+    { id: 'st3', x: 2330, z: 120, w: 110, d: 60, dz: 90, period: 2.2, look: 'star', world: 'paper' },
     // the dark star bridge: only Oyajitchi's lantern shows it
     { id: 'sl1', x: 3780, z: 120, w: 120, d: 150, look: 'star', secret: 'light' },
     { id: 'sl2', x: 3900, z: 120, w: 120, d: 150, look: 'star', secret: 'light' },

@@ -224,6 +224,9 @@ export const OBJECTS: Record<string, PropSpec> = {
   door: { w: 110, h: 190, draw: (g, w, h) => { rect(g, 4, 30, w - 8, h - 30, vgrad(g, 0, h, '#c8b8e8', '#8a78b8'), 6); ellipse(g, w / 2, 34, w / 2 - 4, 30, '#c8b8e8'); rect(g, 18, 40, w - 36, h - 44, vgrad(g, 30, h, '#5a3a8a', '#2a1a4a'), 0); ellipse(g, w / 2, 42, w / 2 - 18, 24, '#5a3a8a'); ellipse(g, w - 30, h / 2 + 20, 5, 5, '#ffd23a'); } },
   spring: { w: 80, h: 70, draw: (g, w, h) => { g.strokeStyle = '#8a8a98'; g.lineWidth = 6; g.beginPath(); for (let i = 0; i < 5; i++) { g.moveTo(14, h - 8 - i * 9); g.lineTo(w - 14, h - 12 - i * 9); } g.stroke(); rect(g, 6, 4, w - 12, 14, vgrad(g, 4, 18, '#ff8a6a', '#d84a2a'), 6); } },
   heal_pad: { w: 120, h: 50, draw: (g, w, h) => { ellipse(g, w / 2, h / 2, w / 2 - 4, h / 2 - 4, vgrad(g, 0, h, '#aaffd0', '#3ac87a')); g.fillStyle = '#fff'; g.fillRect(w / 2 - 14, h / 2 - 4, 28, 8); g.fillRect(w / 2 - 4, h / 2 - 12, 8, 24); } },
+  /* walls that exist in only one of the egg device's worlds */
+  egg_wall_paper: { w: 110, h: 220, draw: (g, w, h) => { rect(g, 6, 6, w - 12, h - 12, vgrad(g, 0, h, '#f0d8a8', '#c8a870'), 10); for (let y = 30; y < h - 20; y += 38) rect(g, 14, y, w - 28, 5, 'rgba(120,80,40,0.35)'); ellipse(g, w / 2, h / 2, 18, 18, '#ff9ac8'); rect(g, w / 2 - 3, h / 2 - 10, 6, 20, '#fff'); } },
+  egg_wall_pixel: { w: 110, h: 220, draw: (g, w, h) => { for (let y = 6; y < h - 6; y += 13) for (let x = 6; x < w - 6; x += 13) { g.fillStyle = (x * 7 + y * 3) % 26 > 12 ? '#2b3a2a' : '#45573f'; g.fillRect(x, y, 11, 11); } } },
   sign: { w: 110, h: 120, draw: (g, w, h) => { rect(g, w / 2 - 6, 50, 12, h - 50, '#8a5a34'); rect(g, 6, 8, w - 12, 56, vgrad(g, 8, 64, '#f6dcaa', '#c49a60'), 8); for (let i = 0; i < 3; i++) rect(g, 18, 22 + i * 12, w - 36 - i * 10, 4, 'rgba(90,60,30,0.5)'); } },
 };
 
@@ -236,6 +239,12 @@ export function platformTexture(look: string): HTMLCanvasElement {
     lily: ['#8ae07a', '#3a9a4a'], crystal: ['#c88aff', '#6a3ad8'], star: ['#fffbe0', '#e0b83a'],
     candy: ['#ffb0dc', '#e0409a'], stone: ['#c8c2b8', '#7a7468'],
   };
+  if (look === 'pixel') {
+    // a platform made of chunky LCD pixels — it only exists inside the egg device
+    return paperCut(w, h, (g) => {
+      for (let y = 10; y < h - 10; y += 12) for (let x = 8; x < w - 8; x += 12) { g.fillStyle = (x + y) % 24 ? '#2b3a2a' : '#45573f'; g.fillRect(x, y, 10, 10); }
+    }, 3);
+  }
   const [a, b] = cols[look] ?? cols.plank;
   return paperCut(w, h, (g) => {
     rect(g, 6, 22, w - 12, h - 26, b, 18);

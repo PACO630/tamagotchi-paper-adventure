@@ -6,11 +6,11 @@ import {
 
 const MEME_JOIN: Script = [
   CINE(),
-  L('memetchi', '咦？是麻美吉和庫奇帕奇！你們也來採糖霜花嗎？', 'surprised'),
+  L('memetchi', '咦？是麻每吉和大嘴吉！你們也來採糖霜花嗎？', 'surprised'),
   L('hero', '我們在找星之心的碎片。森林會失控就是因為它。', 'normal'),
   L('memetchi', '原來如此……糖果們變得那麼兇，我好難過。樹王以前明明那麼溫柔。', 'sad'),
   L('memetchi', '我也要一起去！我做的甜點可以幫大家恢復體力，也可以拿來「引開」貪吃的傢伙喔！', 'determined'),
-  JOIN('memetchi'), SFX('join'), N('美美吉成為了夥伴！能力「甜點誘餌」：丟出蛋糕，敵人會跑去吃，暫時不會追你。'),
+  JOIN('memetchi'), SFX('join'), N('美眉吉成為了夥伴！能力「甜點誘餌」：丟出蛋糕，敵人會跑去吃，暫時不會追你。'),
   L('memetchi', '對了，可以幫我找三朵糖霜花嗎？我想做一個花束送給樹王。', 'happy'), QS('s2_flowers'),
 ];
 
@@ -27,7 +27,7 @@ export const ch2: ChapterDef = {
   intro: [
     MUSIC('forest'),
     CINE(),
-    N('感應器的指針指向南方。麻美吉和庫奇帕奇來到了甜甜的糖果森林。'),
+    N('感應器的指針指向南方。麻每吉和大嘴吉來到了甜甜的糖果森林。'),
     PL('kuchipatchi', '哇——整座森林都是糖果！我可以吃一口嗎！？', 'happy'),
     WALK('partner', 420), JUMP('partner'),
     SHAKE(400), SFX('shake'),
@@ -57,9 +57,9 @@ export const ch2: ChapterDef = {
       { if: '!ch2_maze_open', script: [L('candy_master', '迷宮的開關要按照「糖果→餅乾→巧克力」的順序敲喔！順序錯了就要重來。', 'normal')] },
       { script: [L('candy_master', '森林中心的樹王以前是很溫柔的……拜託你們了。', 'sad')] },
     ] },
-    { id: 'memetchi', name: '美美吉', look: 'memetchi', x: 1200, z: 170, showIf: '!joined:memetchi', talk: [{ script: MEME_JOIN }] },
+    { id: 'memetchi', name: '美眉吉', look: 'memetchi', x: 1200, z: 170, showIf: '!joined:memetchi', talk: [{ script: MEME_JOIN }] },
     { id: 'gummy_kid', name: '軟糖小孩', look: LOOKS.kid, x: 5650, z: 210, talk: [
-      { script: [L('gummy_kid', '樹王爺爺最喜歡美美吉姊姊了。每年她都會帶好香的糖水來。', 'normal'), L('gummy_kid', '樹王爺爺……會變回來嗎？', 'sad')] },
+      { script: [L('gummy_kid', '樹王爺爺最喜歡美眉吉姊姊了。每年她都會帶好香的糖水來。', 'normal'), L('gummy_kid', '樹王爺爺……會變回來嗎？', 'sad')] },
     ] },
   ],
   enemies: [
@@ -70,6 +70,8 @@ export const ch2: ChapterDef = {
     { id: 'e2d', enemy: 'gumdrop', party: ['gumdrop', 'thorny_lolly', 'gumdrop'], x: 3700, z: 170, ai: 'ambush' },
   ],
   chests: [
+    { id: 'c2_px1', x: 2900, z: 48, items: [{ id: 'star_candy', qty: 2 }], world: 'pixel' },
+    { id: 'c2_px2', x: 5900, z: 220, items: [{ id: 'power_cookie', qty: 1 }, { id: 'juice', qty: 1 }], world: 'pixel' },
     { id: 'c2_compass', x: 1650, z: 60, items: [{ id: 'candy_compass', qty: 1 }, { id: 'candy_flower', qty: 1 }] },
     { id: 'c2_1', x: 900, z: 40, items: [{ id: 'sticker_4', qty: 1 }] },
     { id: 'c2_h1', x: 2150, z: 120, items: [{ id: 'candy_flower', qty: 1 }, { id: 'star_candy', qty: 1 }], hidden: true },
@@ -79,6 +81,10 @@ export const ch2: ChapterDef = {
     { id: 'c2_4', x: 5500, z: 200, items: [{ id: 'onigiri', qty: 2 }, { id: 'juice', qty: 2 }] },
   ],
   objects: [
+    // 蛋機: one wall is made of paper, the next of pixels — switch worlds between them
+    { id: 'sign_egg2', type: 'sign', x: 1170, z: 210, text: '兩道軟糖牆：一道只在紙片世界、一道只在像素世界。走到兩道牆中間再切換世界吧！' },
+    { id: 'eggw21', type: 'egg_wall', x: 1250, z: 0, w: 1, world: 'paper' },
+    { id: 'eggw22', type: 'egg_wall', x: 1385, z: 0, w: 1, world: 'pixel' },
     { id: 'sign21', type: 'sign', x: 400, z: 160, text: '歡迎來到糖果森林！請勿亂吃路邊的糖果（會咬人）。' },
     { id: 'blk21', type: 'breakable', x: 1450, z: 0, w: 1, flag: 'ch2_blk1' },
     { id: 'donut', type: 'ability', x: 2000, z: 120, need: 'kuchipatchi', look: 'food_wall', flag: 'ch2_donut', script: [
@@ -106,12 +112,17 @@ export const ch2: ChapterDef = {
     { type: 'pit', x: 2680, w: 520, z0: 0, z1: 240, look: 'choco' },
   ],
   platforms: [
+    { id: 'px21', x: 2900, z: 52, w: 140, d: 70, look: 'pixel', world: 'pixel' },
     { id: 'ck1', x: 2760, z: 120, w: 110, d: 60, dz: 80, period: 3.4, look: 'candy' },
     { id: 'ck2', x: 2900, z: 120, w: 110, d: 60, dx: 40, period: 2.6, look: 'plank' },
     { id: 'ck3', x: 3050, z: 110, w: 110, d: 60, dz: -80, period: 3.0, look: 'candy' },
   ],
   chases: [{ id: 'gum', x0: 4300, x1: 5520, look: 'gumball', speed: 262, flag: 'ch2_chase_done', armed: 'ch2_chase_armed' }],
   triggers: [
+    { id: 't2_egg', x: 1140, w: 60, once: true, script: [
+      L('hero', '前面有兩道牆……一道是紙片做的，一道是像素做的！', 'surprised'),
+      PL('memetchi', '那就走一段、切換一次世界，再走一段、再切換一次！', 'happy'),
+    ] },
     { id: 't2_meme', x: 1100, w: 60, if: '!joined:memetchi', once: true, block: true, script: [EMOTE('memetchi', '!'), ...MEME_JOIN] },
     { id: 't2_donut', x: 1900, w: 40, if: '!ch2_donut', once: true, script: [L('hero', '巧克力甜甜圈做成的牆！', 'surprised'), PL('kuchipatchi', '這種的我最在行了！換我上場（按 C 或對著牆按 Enter）！', 'determined')] },
     { id: 't2_bear', x: 2380, w: 40, if: '!ch2_bear', once: true, script: [L('hero', '一隻超大的軟糖熊在路中間睡午覺……推都推不動。', 'worried'), PL('memetchi', '交給我！貪吃的傢伙，最喜歡蛋糕了～', 'happy')] },
@@ -163,13 +174,13 @@ export const ch2: ChapterDef = {
     pre: [
       QS('q2_boss'), SHAKE(800), SFX('shake'),
       L('candy_tree_king', '吼喔喔喔……甜……還要更多的甜……！', 'angry'),
-      PL('memetchi', '樹王！是我啊，每年都來幫你澆糖水的美美吉！', 'sad'),
+      PL('memetchi', '樹王！是我啊，每年都來幫你澆糖水的美眉吉！', 'sad'),
       L('candy_tree_king', '……不……認識……！', 'angry'),
       L('hero', '碎片在樹王的樹根裡！只能先讓它冷靜下來了！', 'determined'),
       { do: 'battle', encounter: ['candy_tree_king', 'gumdrop', 'gumdrop'], boss: true, flag: 'boss2', music: 'boss' },
     ],
     post: [
-      L('candy_tree_king', '……美美吉……？我……做了什麼……', 'sad'),
+      L('candy_tree_king', '……美眉吉……？我……做了什麼……', 'sad'),
       PL('memetchi', '沒關係的，樹王。等世界恢復，我再來幫你澆糖水。', 'happy'),
       IF('done:s2_flowers', [L('memetchi', '這是送給你的糖霜花束！', 'happy'), FX('sparkle', 'hero'), L('candy_tree_king', '……好香。好久沒有聞到花香了。謝謝你。', 'happy')]),
       SFX('shard'), N('樹王的根部升起了一塊溫暖的碎片。'),

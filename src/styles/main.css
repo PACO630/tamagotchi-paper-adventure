@@ -688,3 +688,24 @@ body.touch-ui .hud-ability { font-size: .62em; }
 .b-talk-body { display: flex; flex-direction: column; font-weight: 900; line-height: 1.35; }
 .b-talk-body b { color: var(--pink, #e8408a); font-size: .85em; }
 .partner-card.away { opacity: .35; filter: grayscale(1); }
+
+/* ---------- egg device: the pixel (LCD) world ---------- */
+.egg-frame { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .22s; overflow: hidden; }
+body.egg-on .egg-frame { opacity: 1; }
+.egg-lcd { position: absolute; inset: 0; background-image: linear-gradient(rgba(20, 34, 20, .13) 1px, transparent 1px), linear-gradient(90deg, rgba(20, 34, 20, .13) 1px, transparent 1px); background-size: 5px 5px; }
+.egg-shell { position: absolute; left: 50%; top: 52%; width: 112%; height: 136%; transform: translate(-50%, -50%); border-radius: 50% 50% 47% 47% / 56% 56% 44% 44%; border: 7px solid var(--ink); box-shadow: 0 0 0 100vmax #ff9ac8, inset 0 0 0 5px rgba(255, 255, 255, .45); }
+.egg-frame.flip .egg-shell { animation: egg-in .38s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes egg-in { from { transform: translate(-50%, -50%) scale(1.9) rotate(-6deg); } to { transform: translate(-50%, -50%) scale(1) rotate(0); } }
+.egg-chip { position: absolute; left: 50%; top: .5em; transform: translateX(-50%) rotate(-1deg); display: flex; align-items: center; gap: .35em; background: rgba(255, 253, 246, .94); border: 3px solid var(--ink); border-radius: 46% 46% 40% 40% / 60% 60% 40% 40%; padding: .15em .7em .15em .4em; cursor: pointer; pointer-events: auto; }
+.egg-chip.on { background: #b8c4a0; }
+.egg-ico { width: 1.1em; height: 1.35em; border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%; background: #ff9ac8; border: 2.5px solid var(--ink); }
+.egg-bat { width: 3.6em; height: .7em; border: 2.5px solid var(--ink); border-radius: 4px; background: #fff; overflow: hidden; }
+.egg-bat i { display: block; height: 100%; background: #6cc04a; transition: width .2s; }
+.egg-chip.low .egg-bat i { background: #ff5a4a; animation: egg-low .5s steps(2) infinite; }
+@keyframes egg-low { 50% { opacity: .3; } }
+.tbtn.t-egg { background: rgba(255, 154, 200, .6); }
+.t-egg { right: 140px; bottom: 44px; width: 44px; height: 44px; }
+body:not(.has-egg) .t-egg { display: none; }
+body.cinema-on .egg-chip, #ui:has(.battle-ui) .egg-chip { visibility: hidden; }
+/* touch screens: the item quick bar sits at the top centre, so the egg battery goes just below it */
+body.touch-ui:not(.portrait) .egg-chip { top: 3.9em; transform: translateX(-50%) rotate(-1deg) scale(.9); }

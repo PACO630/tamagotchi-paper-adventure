@@ -65,7 +65,7 @@ const list: EnemyDef[] = [
 
   /* ---------- Chapter 5: Dream Ocean ---------- */
   { id: 'puffer', name: '河豚刺刺', desc: '一生氣就膨脹出尖刺。', hp: 36, atk: 9, def: 2, exp: 80, coins: 13, traits: ['spiky'],
-    moves: [atk('刺刺膨脹', 1, 3)], art: { body: 'fish', color: '#ffff80', accent: '#ff8040' } },
+    moves: [atk('刺刺膨脹', 1, 3), { id: 'splash', name: '潑水', kind: 'status', power: 0, target: 'one', weight: 1, status: { type: 'wet', turns: 3, chance: 0.9 } }], art: { body: 'fish', color: '#ffff80', accent: '#ff8040' } },
   { id: 'zap_jelly', name: '電電水母', desc: '漂在水裡，會電人。', hp: 30, atk: 9, def: 1, exp: 78, coins: 13, traits: ['flying'],
     moves: [{ id: 'zap', name: '電擊', kind: 'status', power: 0, target: 'one', weight: 3, status: { type: 'dizzy', turns: 1, chance: 0.3 } }],
     drops: [{ item: 'star_candy', chance: 0.3 }], art: { body: 'jelly', color: '#ff80ff', accent: '#80ffff' } },
@@ -73,7 +73,7 @@ const list: EnemyDef[] = [
     moves: [atk('大鉗子', 1, 3), { id: 'shell', name: '縮殼', kind: 'buff', power: 0, target: 'one', weight: 1 }],
     drops: [{ item: 'iron_bread', chance: 0.3 }], art: { body: 'crab', color: '#ff4040', accent: '#808080' } },
   { id: 'abyss_guardian', name: '深海古代守護者', desc: '沉睡在遺跡的古代巨魚。漲潮時會變得更強。', hp: 300, atk: 10, def: 3, exp: 1300, coins: 200, traits: ['boss'],
-    moves: [atk('古代咬擊', 2, 4), { id: 'tidal', name: '大海嘯', kind: 'attack', power: 0, target: 'all', weight: 3 },
+    moves: [atk('古代咬擊', 2, 4), { id: 'tidal', name: '大海嘯', kind: 'attack', power: 0, target: 'all', weight: 3, status: { type: 'wet', turns: 3, chance: 1 } },
       { id: 'call_jelly', name: '呼喚水母', kind: 'summon', power: 0, target: 'one', weight: 2, summon: ['zap_jelly'] }],
     phases: [{ hpBelow: 0.5, msg: '守護者的鱗片發出光芒，潮水更洶湧了！', atk: 12 }],
     mechanic: 'tide', drops: [{ item: 'b_learn', chance: 1 }], art: { body: 'fish', color: '#0080ff', accent: '#ffd700', size: 2 } },
@@ -99,17 +99,17 @@ const list: EnemyDef[] = [
   { id: 'shadow_blob', name: '影子果凍', desc: '黑暗異世界版本的果凍。', hp: 60, atk: 14, def: 3, exp: 160, coins: 20, traits: [],
     moves: [atk('影子撞擊', 1, 3), { id: 'gloom', name: '陰鬱', kind: 'status', power: 0, target: 'all', weight: 1, status: { type: 'defDown', turns: 2, chance: 0.5, amount: 1 } }],
     art: { body: 'blob', color: '#400080', accent: '#ff00ff', dark: true } },
-  { id: 'dark_kuchi', name: '黑暗庫奇帕奇', desc: '吃掉了所有快樂的黑暗庫奇帕奇。', hp: 70, atk: 15, def: 3, exp: 190, coins: 25, traits: [],
+  { id: 'dark_kuchi', name: '黑暗大嘴吉', desc: '吃掉了所有快樂的黑暗大嘴吉。', hp: 70, atk: 15, def: 3, exp: 190, coins: 25, traits: [],
     moves: [{ id: 'dark_bite', name: '黑暗大口咬', kind: 'drain', power: 2, target: 'one', weight: 3 }], art: { body: 'blob', color: '#000000', accent: '#80ff80', dark: true, mimic: 'kuchipatchi' } },
-  { id: 'dark_meme', name: '黑暗美美吉', desc: '說話很刻薄的黑暗美美吉。', hp: 62, atk: 14, def: 3, exp: 190, coins: 25, traits: [],
+  { id: 'dark_meme', name: '黑暗美眉吉', desc: '說話很刻薄的黑暗美眉吉。', hp: 62, atk: 14, def: 3, exp: 190, coins: 25, traits: [],
     moves: [atk('苦澀甜點', 1, 2), { id: 'dark_heal', name: '黑暗治癒', kind: 'heal', power: 20, target: 'one', weight: 1 }], art: { body: 'blob', color: '#000000', accent: '#ff80c0', dark: true, mimic: 'memetchi' } },
   { id: 'void_eye', name: '虛空之眼', desc: '漂浮在黑暗中盯著你看的眼睛。', hp: 55, atk: 15, def: 2, exp: 180, coins: 22, traits: ['flying'],
     moves: [atk('凝視光線', 1, 3), { id: 'stare', name: '催眠', kind: 'status', power: 0, target: 'one', weight: 1, status: { type: 'sleep', turns: 1, chance: 0.5 } }],
     art: { body: 'eye', color: '#200040', accent: '#ff00ff', dark: true } },
-  { id: 'dark_mametchi', name: '黑暗麻美吉', desc: '麻美吉內心不安所形成的影子。會模仿隊伍上一次使用的技能。', hp: 460, atk: 15, def: 4, exp: 2800, coins: 320, traits: ['boss'],
+  { id: 'dark_mametchi', name: '黑暗麻每吉', desc: '麻每吉內心不安所形成的影子。會模仿隊伍上一次使用的技能。', hp: 460, atk: 15, def: 4, exp: 2800, coins: 320, traits: ['boss'],
     moves: [atk('黑暗鎚', 2, 4), { id: 'dark_beam', name: '黑暗射線', kind: 'attack', power: 1, target: 'all', weight: 3 },
-      { id: 'mimic', name: '模仿', kind: 'special', power: 0, target: 'one', weight: 3, msg: '黑暗麻美吉模仿了你們的招式！' }],
-    phases: [{ hpBelow: 0.4, msg: '「為什麼…為什麼你不害怕？」黑暗麻美吉變得更不穩定了！', atk: 17 }],
+      { id: 'mimic', name: '模仿', kind: 'special', power: 0, target: 'one', weight: 3, msg: '黑暗麻每吉模仿了你們的招式！' }],
+    phases: [{ hpBelow: 0.4, msg: '「為什麼…為什麼你不害怕？」黑暗麻每吉變得更不穩定了！', atk: 17 }],
     mechanic: 'copycat', drops: [{ item: 'b_vampire', chance: 1 }], art: { body: 'blob', color: '#202020', accent: '#ff0040', dark: true, mimic: 'mametchi', size: 1.5 } },
 
   /* ---------- Chapter 8: Star Temple ---------- */
@@ -135,17 +135,17 @@ const list: EnemyDef[] = [
 list.push(
   { id: 'dahui', name: '大灰', desc: '灰灰兄弟的哥哥。力氣很大、腦筋很慢，最喜歡點心。', hp: 120, atk: 8, def: 2, exp: 260, coins: 60, traits: [],
     moves: [atk('灰灰肚子撞', 1, 4), { id: 'snack', name: '吃點心', kind: 'heal', power: 14, target: 'one', weight: 1, msg: '大灰拿出點心大口吃掉了！' }],
-    art: { body: 'blob', color: '#a8a8b4', accent: '#5a5a6a', npc: { color: '#a8a8b4', accent: '#5a5a6a', ears: 'round', hat: 'cap', size: 1.15 } } },
+    art: { body: 'blob', color: '#a8a8b4', accent: '#5a5a6a', npc: { species: 'dahui', color: '#aeb0bc', accent: '#5a5c6e' } } },
   { id: 'xiaohui', name: '小灰', desc: '灰灰兄弟的弟弟。個子小、點子多，會用奇怪的發明。', hp: 70, atk: 7, def: 1, exp: 220, coins: 60, traits: ['flying'],
     moves: [atk('灰灰彈弓', 0, 3), { id: 'grey_gas', name: '灰灰煙霧', kind: 'status', power: 0, target: 'all', weight: 2, status: { type: 'atkDown', turns: 2, chance: 0.6, amount: 1 } }],
-    art: { body: 'blob', color: '#c4c4cc', accent: '#7a5aa0', npc: { color: '#c4c4cc', accent: '#7a5aa0', ears: 'pointy', glasses: true, size: 0.82 } } },
+    art: { body: 'blob', color: '#c4c4cc', accent: '#7a5aa0', npc: { species: 'xiaohui', color: '#cfd0d8', accent: '#7a5aa0' } } },
 );
 
 /** Boss titles and what they say during the fight. */
 const BOSS_LINES: Record<string, { epithet: string; intro?: BattleTalk[]; phases?: BattleTalk[][] }> = {
   chaos_guardian: { epithet: '被碎片附身的守護石像',
     intro: [{ who: 'chaos_guardian', text: '……守護……停止……村莊……停止……', face: 'angry' }],
-    phases: [[{ who: 'kuchipatchi', text: '它的眼睛變紅了！麻美吉，小心！', face: 'worried' }]] },
+    phases: [[{ who: 'kuchipatchi', text: '它的眼睛變紅了！麻每吉，小心！', face: 'worried' }]] },
   candy_tree_king: { epithet: '糖果森林暴走樹王',
     intro: [{ who: 'candy_tree_king', text: '甜……更多的甜……把你們也變成糖！', face: 'angry' }],
     phases: [[{ who: 'memetchi', text: '樹王！你記得我做的蛋糕嗎！？快醒過來！', face: 'sad' }]] },
@@ -161,7 +161,7 @@ const BOSS_LINES: Record<string, { epithet: string; intro?: BattleTalk[]; phases
   castle_knight: { epithet: '忘記誓言的城堡騎士',
     intro: [{ who: 'castle_knight', text: '闖入者……我必須……守護……什麼來著……', face: 'angry' }],
     phases: [[{ who: 'violetchi', text: '鏡子裡的是假的！先打倒分身！', face: 'determined' }]] },
-  dark_mametchi: { epithet: '麻美吉心中的不安',
+  dark_mametchi: { epithet: '麻每吉心中的不安',
     intro: [{ who: 'dark_mametchi', text: '來吧，我。讓我看看你有多害怕。', face: 'angry' }],
     phases: [[{ who: 'dark_mametchi', text: '為什麼……為什麼你一直往前走！？', face: 'hurt' }]] },
   eternatchi: { epithet: '星之心過去的守護者',

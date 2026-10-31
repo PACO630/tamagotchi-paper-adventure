@@ -2,21 +2,21 @@ import type { CharDef, CharId, Stats } from './types';
 
 export const CHARACTERS: Record<CharId, CharDef> = {
   mametchi: {
-    id: 'mametchi', name: '麻美吉', nameEn: 'Mametchi', title: '天才小發明家',
+    id: 'mametchi', name: '麻每吉', nameEn: 'Mametchi', title: '天才小發明家',
     desc: '頭腦聰明、充滿好奇心的發明家。手上的星之感應器能找到星之心碎片。',
     base: { maxHP: 20, maxSP: 10, atk: 3, def: 0 }, growth: { maxHP: 3, maxSP: 2, atk: 0.5, def: 0.25 },
     skills: [{ id: 'spark_hammer', level: 1 }, { id: 'gadget_shield', level: 3 }, { id: 'star_beam', level: 6 }, { id: 'heal_bot', level: 10 }],
     color: '#ffd84a', fieldAbility: '鎚子敲碎裂開的方塊；感應器探測隱藏寶箱',
   },
   memetchi: {
-    id: 'memetchi', name: '美美吉', nameEn: 'Memetchi', title: '溫柔的甜點師',
+    id: 'memetchi', name: '美眉吉', nameEn: 'Memetchi', title: '溫柔的甜點師',
     desc: '喜歡漂亮東西和甜點的女孩，總是在大家受傷時第一個衝過來。',
     base: { maxHP: 18, maxSP: 14, atk: 2, def: 0 }, growth: { maxHP: 2.5, maxSP: 2.5, atk: 0.4, def: 0.25 },
     skills: [{ id: 'sweet_heal', level: 1 }, { id: 'charm_wink', level: 3 }, { id: 'heart_rain', level: 6 }],
     color: '#ff8ac4', fieldAbility: '甜點誘餌：引開敵人和貪吃的守衛',
   },
   kuchipatchi: {
-    id: 'kuchipatchi', name: '庫奇帕奇', nameEn: 'Kuchipatchi', title: '永遠吃不飽',
+    id: 'kuchipatchi', name: '大嘴吉', nameEn: 'Kuchipatchi', title: '永遠吃不飽',
     desc: '悠哉又貪吃，嘴巴大大的。肚子餓的時候力氣特別大。',
     base: { maxHP: 26, maxSP: 8, atk: 3, def: 1 }, growth: { maxHP: 3.5, maxSP: 1.5, atk: 0.5, def: 0.3 },
     skills: [{ id: 'big_bite', level: 1 }, { id: 'belly_bounce', level: 3 }, { id: 'snack_time', level: 6 }],

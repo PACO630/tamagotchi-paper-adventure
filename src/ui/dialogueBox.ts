@@ -69,6 +69,8 @@ class DialogueBox {
     setTimeout(() => el.remove(), 200);
     this.off?.();
     this.off = null;
+    // a skip only ever applies to the conversation it was pressed in
+    this.skipRequested = false;
     input.unblock('dialogue');
     document.body.classList.remove('dlg-open');
     this.advanceResolve?.();

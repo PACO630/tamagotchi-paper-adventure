@@ -141,6 +141,8 @@ export async function runScript(script: Script, host: StoryHost): Promise<boolea
   if (running) return false;
   running = true;
   fastForward = false;
+  // a skip left over from an earlier conversation must not swallow this one's lines
+  dialogue.endSkip();
   lastActivity = performance.now();
   const mine = epoch;
   dialogue.canAdvance = true;

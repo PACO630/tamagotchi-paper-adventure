@@ -8,7 +8,7 @@
  */
 import type Peer from 'peerjs';
 import type { DataConnection } from 'peerjs';
-import { MAX_PLAYERS, PEER_PREFIX } from '../core/config';
+import { BUILD_ID, MAX_PLAYERS, PEER_PREFIX } from '../core/config';
 import { bus } from '../core/events';
 import { G, type NetBridge } from '../core/game';
 import { hashString, roomCode, uid } from '../core/util';
@@ -157,7 +157,7 @@ class Session {
     const s = G.local;
     const level = s?.playerLevel ?? 1;
     this.sendToHost({
-      t: 'hello', v: PROTOCOL_VERSION, key: this.localKey, name: s?.playerName ?? '玩家', level,
+      t: 'hello', v: PROTOCOL_VERSION, build: BUILD_ID, key: this.localKey, name: s?.playerName ?? '玩家', level,
       stats: statsAt('mametchi', level), hp: 0, sp: 0, skills: [], badges: s?.equipment.badges.slice() ?? [],
     });
   }
@@ -229,7 +229,11 @@ class Session {
       // ---------- host side ----------
       case 'hello': {
         if (!this.isHost || !conn) return;
-        if (m.v !== PROTOCOL_VERSION) { this.send(conn, { t: 'reject', reason: '遊戲版本不同，請兩邊都重新整理網頁。' }); return; }
+        // everyone must run the very same build (an updated web app only takes over after it is reopened)
+        if (m.v !== PROTOCOL_VERSION || (m.build && m.build !== BUILD_ID)) {
+          this.send(conn, { t: 'reject', reason: '你和房主的遊戲版本不同。請大家都把遊戲完全關掉再重新打開（手機要從多工畫面滑掉），更新後再加入。' });
+          return;
+        }
         let r = this.roster.find((x) => x.key === m.key);
         if (!r) {
           if (this.phase === 'game') { this.send(conn, { t: 'reject', reason: '遊戲已經開始了，無法加入新的玩家。' }); return; }

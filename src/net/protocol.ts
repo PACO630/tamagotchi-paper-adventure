@@ -2,7 +2,7 @@ import type { CharId, Stats } from '../data/types';
 import type { GameAction } from '../systems/actions';
 import type { SaveData } from '../systems/saveSchema';
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 export interface RosterEntry {
   key: string;          // stable playerId (survives reconnects)
@@ -23,7 +23,7 @@ export interface RosterEntry {
 export interface PosUpdate { key: string; x: number; z: number; y: number; f: number; a: string; t: number }
 
 export type NetMsg =
-  | { t: 'hello'; v: number; key: string; name: string; level: number; stats: Stats; hp: number; sp: number; skills: string[]; badges: string[] }
+  | { t: 'hello'; v: number; build?: string; key: string; name: string; level: number; stats: Stats; hp: number; sp: number; skills: string[]; badges: string[] }
   | { t: 'welcome'; roster: RosterEntry[]; phase: 'lobby' | 'game'; hostKey: string; room: string; chapter: number }
   | { t: 'reject'; reason: string }
   | { t: 'roster'; roster: RosterEntry[]; phase: 'lobby' | 'game'; hostKey: string; chapter: number }

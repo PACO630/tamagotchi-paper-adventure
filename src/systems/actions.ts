@@ -112,7 +112,8 @@ export function applyAction(state: SaveData, act: GameAction, ctx: { local: Save
       break;
     }
     case 'join':
-      if (!ctx.multi && !state.partners.unlocked.includes(act.partner) && act.partner !== 'mametchi') {
+      // (multiplayer too: the joined partner becomes the follower; the world skips characters a player uses)
+      if (!state.partners.unlocked.includes(act.partner) && act.partner !== 'mametchi') {
         state.partners.unlocked.push(act.partner);
         const st = statsAt(act.partner, state.playerLevel);
         state.partners.hp[act.partner] = st.maxHP;
@@ -158,7 +159,11 @@ export function applyAction(state: SaveData, act: GameAction, ctx: { local: Save
       if (ctx.local) bus.emit('exp:apply', act.n);
       break;
     case 'partyVitals':
-      if (!ctx.multi) {
+      // multiplayer: only the follower's vitals live in the shared state (players keep their own)
+      if (ctx.multi) {
+        for (const k of Object.keys(act.hp)) if (state.partners.unlocked.includes(k as CharId)) state.partners.hp[k] = act.hp[k];
+        for (const k of Object.keys(act.sp)) if (state.partners.unlocked.includes(k as CharId)) state.partners.sp[k] = act.sp[k];
+      } else {
         if (act.hp.hero !== undefined) state.playerHP = act.hp.hero;
         if (act.sp.hero !== undefined) state.playerSP = act.sp.hero;
         for (const k of Object.keys(act.hp)) if (k !== 'hero') state.partners.hp[k] = act.hp[k];

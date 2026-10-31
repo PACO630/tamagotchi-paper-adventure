@@ -198,7 +198,13 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
 
     this.offs.push(bus.on('state:changed', (a: any) => this.onStateChanged(a)));
     this.offs.push(bus.on('partner:changed', () => this.refreshPartner()));
-    this.offs.push(bus.on('partner:joined', (id: CharId) => { this.refreshPartner(); audio.sfx('join'); this.partnerJoinFx(id); }));
+    this.offs.push(bus.on('partner:joined', (id: CharId) => {
+      if (G.mode === 'multi' && G.isAuthority && G.playerChars().includes(G.state.partners.active as CharId)) {
+        const other = [...G.state.partners.unlocked].reverse().find((p) => !G.playerChars().includes(p as CharId) && !G.cond(`away:${p}`)) ?? null;
+        G.dispatch({ a: 'setPartner', partner: other as CharId | null });
+      }
+      this.refreshPartner(); audio.sfx('join'); this.partnerJoinFx(id);
+    }));
     this.offs.push(saves.onBeforeSave((s) => {
       // only record the position while this map is still the save's current chapter
       // (after a chapter ends the save already points at the next map)
@@ -563,7 +569,9 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
 
   private refreshNpcs(): void {
     for (const n of this.npcs) {
-      n.actor.visible = !n.def.showIf || G.cond(n.def.showIf);
+      // multiplayer: a character a player (or the follower) is using never shows up a second time as an NPC
+      const dup = typeof n.def.look === 'string' && G.charInParty(n.def.look);
+      n.actor.visible = (!n.def.showIf || G.cond(n.def.showIf)) && !dup;
       n.actor.sync();
     }
   }
@@ -648,11 +656,20 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   refreshPartner(): void {
     this.partner?.destroy();
     this.partner = null;
-    if (G.mode !== 'single') return;
     const p = G.state.partners.active;
-    if (!p) return;
-    this.partner = new Actor(this, { charId: p }, this.player.x - 70, this.player.z, 0.8);
+    // multiplayer: the follower only appears when no player is that character
+    if (!p || (G.mode === 'multi' && G.playerChars().includes(p))) return;
+    const lead = this.partnerLeader();
+    this.partner = new Actor(this, { charId: p }, lead.x - 70, lead.z, 0.8);
+    if (G.mode === 'multi') this.partner.setLabel(`${CHARACTERS[p].name}（跟班）`, '#fffdf6');
     this.trail = [];
+  }
+
+  /** Who the partner walks behind: the local hero, or in multiplayer the host's character. */
+  private partnerLeader(): Actor {
+    if (G.mode !== 'multi' || G.isAuthority) return this.player;
+    const host = G.net?.roster.find((r) => r.isHost)?.key;
+    return (host && this.remotes.get(host)) || this.player;
   }
 
   /* ======================= state reactions ======================= */
@@ -1022,6 +1039,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       G.dispatch({ a: 'partyVitals', hp, sp });
     } else if (G.net?.isHost) {
       for (const r of G.net.roster) { r.hp = r.stats.maxHP; r.sp = r.stats.maxSP; }
+      const f = G.buildParty().find((m) => !G.net!.roster.some((r) => r.key === m.key));
+      if (f) G.dispatch({ a: 'partyVitals', hp: { [f.key]: f.stats.maxHP }, sp: { [f.key]: f.stats.maxSP } });
       bus.emit('net:rosterDirty');
     } else worldNet.requestInteract('heal', 'pad');
     toast('HP 和技能點數全部回復了！', 'good', 1600);
@@ -1031,7 +1050,7 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
   private updatePartner(): void {
     const pa = this.partner;
     if (!pa) return;
-    const p = this.player;
+    const p = this.partnerLeader();
     const last = this.trail[this.trail.length - 1];
     if (!last || Math.hypot(last.x - p.x, last.z - p.z) > 6 || Math.abs(last.y - p.y) > 4) this.trail.push({ x: p.x, z: p.z, y: p.y });
     if (this.trail.length > 400) this.trail.shift();
@@ -1830,6 +1849,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
     this.extras.get(actor)?.destroy();
     const t = this.lookTarget(look, dark);
     const a = new Actor(this, t, x, clamp(z, 6, DEPTH - 6), 0.86, !!t.charId);
+    // multiplayer: a player / the follower already is this character — keep the cutscene working, but invisible
+    if (typeof look === 'string' && G.charInParty(look)) a.visible = false;
     const name = this.lookName(look);
     if (name) a.setLabel(name, '#fffdf6');
     if (dir) { a.facingX = dir; a.view = 'side'; a.sprite.setFlipX(dir < 0); a.play('idle', true); }
@@ -2004,8 +2025,8 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
 
   /** Single player: switch the active partner (R / tap the partner card). */
   cyclePartner(): void {
-    if (G.mode !== 'single') return;
-    const list = (G.state.partners.unlocked as CharId[]).filter((id) => !G.cond(`away:${id}`));
+    if (G.mode === 'multi' && !G.isAuthority) { toast('跟班由房主切換。', 'info', 1300); return; }
+    const list = (G.state.partners.unlocked as CharId[]).filter((id) => !G.cond(`away:${id}`) && !G.playerChars().includes(id));
     if (list.length < 2) { toast(list.length ? '目前只有一位夥伴。' : '還沒有夥伴。', 'info', 1200); return; }
     const i = list.indexOf(G.state.partners.active as CharId);
     const next = list[(i + 1) % list.length];
@@ -2074,7 +2095,12 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
         await new Promise((r) => this.time.delayedCall(250, r));
       }
       await this.interact('ability', id, G.localMemberKey(), { who: need });
-    } else if (!G.isAuthority) worldNet.requestInteract('ability', id, { who: G.localChar });
+    } else if (!G.isAuthority) {
+      // guests: say it right away when nobody (player or follower) can do it yet
+      const can = G.playerChars().includes(need) || (G.state.partners.unlocked.includes(need) && !G.cond(`away:${need}`));
+      if (!can) { audio.sfx('error'); toast(`這裡需要${FieldPlay.needText(need)}。先繼續冒險吧！`, 'warn', 2000); return; }
+      worldNet.requestInteract('ability', id, { who: G.localChar });
+    }
     else await this.interact('ability', id, G.localMemberKey(), { who: G.localChar });
   }
 
@@ -2088,7 +2114,23 @@ export class WorldScene extends Phaser.Scene implements StoryHost {
       violetchi: '灰灰的輪廓……讓我把顏色畫回去！', oyajitchi: '星之燈啊，照亮孩子們的路吧。', gozarutchi: '泡泡忍術・浮之卷！',
       maskutchi: '正義的變裝，啟動！', mametchi: '感應器，掃描！',
     };
-    const doer = G.mode === 'single' ? 'partner' : 'hero';
+    let doer = G.mode === 'single' ? 'partner' : 'hero';
+    if (G.mode === 'multi') {
+      // a player who is that character does it; otherwise the follower switches to it
+      const holder = G.net?.roster.find((r) => r.charId === need);
+      if (holder) doer = holder.key === G.net?.localKey ? 'hero' : need;
+      else {
+        if (!G.state.partners.unlocked.includes(need) || G.cond(`away:${need}`)) {
+          toast(`這裡需要${FieldPlay.needText(need)}。先繼續冒險吧！`, 'warn', 2000);
+          return;
+        }
+        if (G.state.partners.active !== need) {
+          G.dispatch({ a: 'setPartner', partner: need });
+          await new Promise((r) => this.time.delayedCall(300, r));
+        }
+        doer = 'partner';
+      }
+    }
     await this.runStory([
       { do: 'cinema', on: true },
       { do: 'pan', x: d.x - 80, ms: 500 },

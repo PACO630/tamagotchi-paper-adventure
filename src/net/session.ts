@@ -111,6 +111,9 @@ class Session {
     const me = this.localEntry();
     me.isHost = true;
     me.joinOrder = 0;
+    // the host always plays the hero, Mametchi (guests pick the other characters)
+    me.charId = 'mametchi';
+    this.applyCharStats(me);
     this.roster = [me];
     this.phase = 'lobby';
     this.status = 'lobby';
@@ -251,6 +254,8 @@ class Session {
         const r = this.rosterByPeer(conn) ?? (m.from === 'local' ? this.me() : undefined);
         if (!r || this.phase !== 'lobby') return;
         if (m.charId && this.roster.some((x) => x.charId === m.charId && x.key !== r.key)) { this.emitRoster(); return; }
+        // the host stays Mametchi; nobody else can take him
+        if (r.isHost ? m.charId !== 'mametchi' : m.charId === 'mametchi') { this.emitRoster(); return; }
         if (m.charId && !CHARACTERS[m.charId]) return;
         r.charId = m.charId;
         this.applyCharStats(r);
@@ -408,6 +413,13 @@ class Session {
       state.storyFlags[`clear:ch${i}`] = true;
     }
     state.coins = 30 * this.chapter;
+    // the follower (跟班) works like single player: partners who joined in earlier chapters are
+    // already along; later ones join through the story. Players' own characters never follow.
+    const taken = new Set(this.roster.map((r) => r.charId));
+    const joined = CHAPTERS.slice(0, this.chapter - 1).map((c) => c.partner).filter((p): p is CharId => !!p);
+    for (const p of joined) state.storyFlags[`joined:${p}`] = true;
+    state.partners.unlocked = joined.filter((p) => p !== 'mametchi');
+    state.partners.active = [...state.partners.unlocked].reverse().find((p) => !taken.has(p)) ?? null;
     for (const r of this.roster) this.applyCharStats(r);
     this.phase = 'game';
     this.status = 'game';

@@ -94,7 +94,8 @@ class Hud {
     for (const m of party) {
       const isMe = m.key === localKey;
       const hpPct = (m.hp / m.stats.maxHP) * 100;
-      const partnerCard = G.mode === 'single' && m.key !== 'hero';
+      // the partner card: single player's partner, or (for the host) the multiplayer follower
+      const partnerCard = G.mode === 'single' ? m.key !== 'hero' : G.isAuthority && !G.net?.roster.some((r) => r.key === m.key);
       const card = h('div', { class: `hud-card${isMe ? ' me' : ''}${partnerCard ? ' partner' : ''}`, title: partnerCard ? '點一下換夥伴（R）' : '' },
         h('img', { src: portraitURL({ charId: m.charId }, hpPct < 30 ? 'worried' : 'normal'), alt: '' }),
         h('div', { class: 'hud-card-info' },

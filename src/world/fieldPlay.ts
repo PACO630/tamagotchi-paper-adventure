@@ -149,7 +149,11 @@ export class FieldPlay {
 
   /** The character whose ability the ability button uses. */
   abilityChar(): CharId | null {
-    if (G.mode === 'multi') return G.localChar as CharId;
+    if (G.mode === 'multi') {
+      const f = G.state.partners.active as CharId | null;
+      if (G.isAuthority && f && !G.playerChars().includes(f)) return f;
+      return G.localChar as CharId;
+    }
     return (G.state.partners.active as CharId | null) ?? null;
   }
 
@@ -172,7 +176,7 @@ export class FieldPlay {
     if (!who) { toast('還沒有夥伴。有夥伴加入後，按 C 就能使用夥伴的能力！', 'warn', 1800); return; }
     if (this.cooldown > 0) { audio.sfx('error'); return; }
     const spot = this.nearbySpot();
-    if (spot && spot.need === who) { void this.w.tryAbilitySpot(spot.id); return; }
+    if (spot && (spot.need === who || G.mode === 'multi' || G.state.partners.unlocked.includes(spot.need!))) { void this.w.tryAbilitySpot(spot.id); return; }
     this.cooldown = COOLDOWN[who] ?? 1.2;
     this.perform(who);
   }

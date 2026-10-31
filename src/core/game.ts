@@ -131,7 +131,8 @@ class GameCore {
           key: r.key, charId: r.charId as CharId, name: r.name, level: r.level,
           stats: { ...r.stats }, hp: r.hp, sp: r.sp, skills: r.skills.slice(), badges: r.badges.slice(),
           controller: r.key,
-        }));
+        }))
+        .concat(this.followerMember());
     }
     const s = this.state;
     const heroStats = effectiveStats(s.playerStats, s.equipment.badges);
@@ -145,6 +146,23 @@ class GameCore {
     return party;
   }
 
+  /**
+   * Multiplayer follower (跟班): an extra partner nobody plays, controlled by the host, so every
+   * field ability is always available. Levels with the players (their average level).
+   */
+  private followerMember(): PartyMember[] {
+    const p = this.state.partners.active as CharId | null;
+    if (!p || !this.net || this.playerChars().includes(p)) return [];
+    const ls = this.net.roster.filter((r) => r.charId).map((r) => r.level);
+    const level = Math.max(1, Math.round(ls.reduce((a, b) => a + b, 0) / Math.max(1, ls.length)));
+    const st = statsAt(p, level);
+    return [{
+      key: p, charId: p, name: `${CHARACTERS[p].name}（跟班）`, level, stats: st,
+      hp: Math.min(this.state.partners.hp[p] ?? st.maxHP, st.maxHP), sp: Math.min(this.state.partners.sp[p] ?? st.maxSP, st.maxSP),
+      skills: skillsAt(p, level), badges: [], controller: this.net.isHost ? 'local' : this.net.roster.find((r) => r.isHost)?.key ?? 'local',
+    }];
+  }
+
   partnerMember(p: CharId): PartyMember {
     const s = this.state;
     const st = statsAt(p, s.playerLevel);
@@ -153,6 +171,18 @@ class GameCore {
       hp: Math.min(s.partners.hp[p] ?? st.maxHP, st.maxHP), sp: Math.min(s.partners.sp[p] ?? st.maxSP, st.maxSP),
       skills: skillsAt(p, s.playerLevel), badges: [], controller: 'local',
     };
+  }
+
+  /** Multiplayer: characters the players picked (the follower and NPCs never use these). */
+  playerChars(): CharId[] {
+    if (this.mode !== 'multi' || !this.net) return [];
+    return this.net.roster.filter((r) => r.charId).map((r) => r.charId as CharId);
+  }
+
+  /** Multiplayer: is this character already in the game as a player or as the follower? */
+  charInParty(id: string): boolean {
+    if (this.mode !== 'multi') return false;
+    return this.playerChars().includes(id as CharId) || this.state?.partners.active === id;
   }
 
   /** Local player's own party member summary (for HUD in multiplayer). */

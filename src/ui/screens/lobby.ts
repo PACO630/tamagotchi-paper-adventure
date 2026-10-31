@@ -66,7 +66,7 @@ export function openLobby(): Promise<'start' | 'back'> {
       layer.onCancel = () => void leave();
       const codeEl = h('div', { class: 'room-code', title: '點擊複製' }, session.room);
       codeEl.addEventListener('click', () => { void navigator.clipboard?.writeText(session.room).then(() => toast('房間代碼已複製！', 'good')); });
-      card.append(h('h2', {}, session.isHost ? '你的房間' : '已加入房間'), h('div', { class: 'room-head' }, h('span', {}, '房間代碼'), codeEl, h('span', { class: 'muted' }, '把代碼告訴朋友！')), rosterEl, h('h3', {}, '選擇角色（每人不能重複）'), chars, chapterRow, footer);
+      card.append(h('h2', {}, session.isHost ? '你的房間' : '已加入房間'), h('div', { class: 'room-head' }, h('span', {}, '房間代碼'), codeEl, h('span', { class: 'muted' }, '把代碼告訴朋友！')), rosterEl, h('h3', {}, session.isHost ? `選擇角色（房主固定是${CHARACTERS.mametchi.name}，朋友選其他角色）` : '選擇角色（每人不能重複，麻每吉是房主）'), chars, chapterRow, footer);
 
       const draw = () => {
         rosterEl.innerHTML = '';
@@ -84,6 +84,7 @@ export function openLobby(): Promise<'start' | 'back'> {
           const owner = session.roster.find((r) => r.charId === id);
           const taken = !!owner && owner.key !== session.localKey;
           const b = btn('', () => {
+            if (session.isHost) { audio.sfx(id === 'mametchi' ? 'click' : 'error'); if (id !== 'mametchi') toast(`房主固定是${CHARACTERS.mametchi.name}！其他角色給朋友選，或在冒險中加入當跟班。`, 'info', 2400); return; }
             if (taken) { audio.sfx('error'); toast(`${owner!.name} 已經選了 ${CHARACTERS[id].name}！`, 'warn'); return; }
             session.pickChar(mine === id ? null : (id as CharId));
             audio.sfx('join');

@@ -26,6 +26,8 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 #game canvas { display: block; }
 #ui, #fx-overlay { position: absolute; left: var(--gx); top: var(--gy); width: var(--gw); height: var(--gh); pointer-events: none; font-size: var(--fs); overflow: hidden; }
 #ui > * { pointer-events: auto; }
+/* the cutscene bars sit in #ui but must let clicks through to the game (only its skip button is clickable) */
+#ui > .cinema { pointer-events: none; }
 #fx-overlay { z-index: 40; }
 #ui { z-index: 30; }
 #toasts { position: fixed; top: calc(var(--gy) + 10px); left: 50%; transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; font-size: var(--fs); }

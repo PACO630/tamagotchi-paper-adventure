@@ -160,10 +160,13 @@ async function applyOutcome(o: BattleOutcome, core: BattleCore): Promise<void> {
     }
     G.dispatch({ a: 'partyVitals', hp, sp });
   } else if (G.net?.isHost) {
+    const fhp: Record<string, number> = {}, fsp: Record<string, number> = {};
     for (const p of o.party) {
       const r = G.net.roster.find((x) => 'p:' + x.key === p.id);
       if (r) { r.hp = o.result === 'lose' ? Math.ceil(r.stats.maxHP / 2) : Math.max(1, p.hp); r.sp = p.sp; }
+      else { fhp[p.id.slice(2)] = Math.max(1, p.hp); fsp[p.id.slice(2)] = p.sp; } // the follower
     }
+    if (Object.keys(fhp).length) G.dispatch({ a: 'partyVitals', hp: fhp, sp: fsp });
     bus.emit('net:rosterDirty');
   }
   if (o.result !== 'win') return;
